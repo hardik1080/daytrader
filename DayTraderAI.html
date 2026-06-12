@@ -291,17 +291,23 @@ function calcP(stk){
 // FETCH — FINNHUB
 // ═══════════════════════════════════════════════════
 async function fetchOne(ticker){
-  const url = `${FURL}?symbol=${ticker}&token=${FKEY}`;
+  const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`;
   const ctrl = new AbortController();
-  const tid = setTimeout(()=>ctrl.abort(), 10000);
+  const tid = setTimeout(()=>ctrl.abort(), 12000);
   try{
-    const r = await fetch(url, {signal:ctrl.signal});
+    const r = await fetch(url, {
+      signal: ctrl.signal,
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+      headers: { 'X-Finnhub-Token': FKEY }
+    });
     clearTimeout(tid);
     if(!r.ok) return null;
     const d = await r.json();
-    if(!d||typeof d.c !== 'number'||d.c===0) return null;
+    if(!d || typeof d.c !== 'number' || d.c === 0) return null;
     return d;
-  }catch(e){ clearTimeout(tid); return null; }
+  } catch(e) { clearTimeout(tid); return null; }
 }
 
 async function fetchAll(){
@@ -330,7 +336,7 @@ async function fetchAll(){
     // Update count visually after each batch
     S.live = liveCount;
     renderStatus();
-    if(i+5<STOCKS.length) await new Promise(r=>setTimeout(r,250));
+    if(i+5<STOCKS.length) await new Promise(r=>setTimeout(r,400));
   }
 
   S.live = liveCount;
