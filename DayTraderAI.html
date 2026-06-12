@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DayTrader AI">
+<title>DayTrader AI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#060d1b;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a1020}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+.topbar{background:#070d1c;border-bottom:1px solid #1a2840;padding:0 14px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#00c987,#3b82f6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.logo-text{font-weight:800;font-size:14px;color:#f1f5f9;letter-spacing:-0.3px;line-height:1.1}
+.logo-sub{font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:0.06em}
+.status-pill{display:flex;align-items:center;gap:5px;background:#0d1628;border:1px solid #1a2840;border-radius:20px;padding:4px 10px;flex-shrink:0}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-green{background:#00c987;animation:pulse 2s infinite}
+.dot-yellow{background:#f0a500;animation:pulse 2s infinite}
+.dot-red{background:#ef4444;animation:pulse 2s infinite}
+.status-text{font-size:11px;font-weight:600;white-space:nowrap}
+.spinner{width:12px;height:12px;border:2px solid #1e293b;border-top:2px solid #00c987;border-radius:50%;animation:spin 0.7s linear infinite}
+.refresh-btn{background:#0d1628;border:1px solid #1a2840;color:#64748b;border-radius:8px;padding:7px 13px;font-size:12px;cursor:pointer;font-weight:700;flex-shrink:0;-webkit-appearance:none}
+.refresh-btn:active{background:#1e293b}
+
+.ticker-wrap{background:#0a1020;border-bottom:1px solid #1a2840;overflow:hidden;height:26px;display:flex;align-items:center}
+.ticker-track{display:flex;white-space:nowrap;animation:ticker 45s linear infinite}
+.ticker-item{font-size:11px;color:#475569;padding:0 20px}
+.ticker-item b{color:#94a3b8}
+.live-badge{background:#ef444420;border:1px solid #ef444444;color:#ef4444;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin:0 10px;flex-shrink:0;white-space:nowrap}
+
+.tabs{background:#070d1c;border-bottom:1px solid #1a2840;display:flex;overflow-x:auto;padding:0 14px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:11px 15px;background:none;border:none;border-bottom:2.5px solid transparent;color:#475569;font-weight:600;font-size:12px;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;-webkit-appearance:none}
+.tab.active{border-bottom-color:#00c987;color:#00c987}
+
+.content{padding:12px;animation:fadeIn 0.25s ease}
+
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:#0d1628;border:1px solid #1a2840;border-radius:11px;padding:12px 8px;text-align:center}
+.stat-val{font-size:20px;font-weight:900;margin-bottom:2px;letter-spacing:-0.5px}
+.stat-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.04em}
+
+.picks-banner{background:#040f08;border:1.5px solid #14532d;border-radius:12px;padding:13px;margin-bottom:12px}
+.picks-title{font-size:10px;color:#22c55e;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:9px}
+.picks-list{display:flex;gap:7px;flex-wrap:wrap}
+.pick-btn{border-radius:8px;padding:6px 11px;cursor:pointer;display:flex;align-items:center;gap:7px;-webkit-appearance:none;border-width:1.5px;border-style:solid}
+.pick-btn:active{opacity:0.8}
+.pick-ticker{font-weight:900;font-size:13px}
+.pick-range{font-size:10px;color:#94a3b8}
+.pick-gain{font-size:10px;border-radius:4px;padding:2px 6px;font-weight:700;color:#060d1b}
+
+.search-box{width:100%;background:#0d1628;border:1px solid #1a2840;border-radius:9px;padding:10px 13px;color:#f1f5f9;font-size:14px;outline:none;margin-bottom:11px;-webkit-appearance:none}
+.search-box::placeholder{color:#334155}
+.search-box:focus{border-color:#3b82f6}
+
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.filter-bar::-webkit-scrollbar{display:none}
+.fbtn{background:#0d1628;border:1px solid #1a2840;color:#64748b;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none}
+.fbtn.active{background:#1a3560;border-color:#3b82f6;color:#60a5fa}
+.fbtn:active{opacity:0.8}
+
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:9px}
+@media(max-width:620px){.stock-grid{grid-template-columns:1fr}}
+
+.card{background:#0d1628;border:1.5px solid #1a2840;border-radius:13px;padding:13px;cursor:pointer;transition:border-color 0.12s}
+.card:active{opacity:0.88}
+.card.sel{border-color:#3b82f6;background:#0f2040}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px}
+.card-ticker{font-size:17px;font-weight:900;color:#f1f5f9;letter-spacing:-0.5px}
+.card-sector{font-size:10px;color:#475569;margin-top:2px}
+.card-right{text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.badge{border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-block;border-width:1px;border-style:solid}
+.price-line{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+.card-price{font-size:13px;font-weight:700;color:#f1f5f9}
+.chg{font-size:10px;font-weight:600}
+.up{color:#00c987}.dn{color:#ef4444}
+.card-targets{display:flex;justify-content:space-between;margin:7px 0 5px;font-size:11px}
+.cbar-wrap{display:flex;align-items:center;gap:7px}
+.cbar-bg{flex:1;height:5px;background:#1e293b;border-radius:3px;overflow:hidden}
+.cbar-fill{height:100%;border-radius:3px}
+.cbar-lbl{font-size:11px;font-weight:700;min-width:30px;text-align:right}
+
+/* DETAIL */
+.back-btn{background:#0d1628;border:1px solid #1a2840;color:#64748b;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:13px;display:inline-flex;align-items:center;gap:5px;-webkit-appearance:none}
+.back-btn:active{background:#1e293b}
+.dhead{background:#0d1628;border:1px solid #1a2840;border-radius:14px;padding:17px;margin-bottom:11px}
+.dticker{font-size:27px;font-weight:900;color:#f1f5f9;letter-spacing:-1px}
+.dcompany{font-size:13px;color:#64748b;margin-top:2px}
+.dsector{font-size:11px;color:#334155;margin-top:1px}
+.dprice-row{display:flex;align-items:baseline;gap:10px;margin:11px 0 7px;flex-wrap:wrap}
+.dprice{font-size:30px;font-weight:900;color:#f1f5f9;letter-spacing:-1.5px}
+.dchg{font-size:13px;font-weight:700}
+.dmeta{display:flex;gap:10px;font-size:11px;color:#475569;flex-wrap:wrap;margin-bottom:13px}
+.pboxes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pbox{background:#070e1c;border:1px solid #1a2840;border-radius:10px;padding:11px;text-align:center}
+.pbox-lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.pbox-val{font-size:17px;font-weight:900;letter-spacing:-0.5px}
+.pbox-sub{font-size:10px;color:#334155;margin-top:3px}
+.chart-card{background:#0d1628;border:1px solid #1a2840;border-radius:14px;padding:17px;margin-bottom:11px}
+.chart-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.07em}
+.why-card{background:#021a0a;border:1.5px solid #14532d;border-radius:14px;padding:15px;margin-bottom:11px}
+.why-title{font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.why-text{font-size:13px;color:#dcfce7;line-height:1.7}
+.plan-card{background:#0d1628;border:1px solid #1a2840;border-radius:14px;padding:15px;margin-bottom:11px}
+.plan-title{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:11px}
+.steps{display:flex;flex-direction:column;gap:7px}
+.step{display:flex;gap:10px;align-items:flex-start;background:#070e1c;border-radius:9px;padding:10px 12px}
+.snum{width:22px;height:22px;border-radius:50%;background:#1e293b;color:#64748b;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px}
+.sbody{font-size:12px;color:#cbd5e1;line-height:1.5}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+.icard{background:#0a1525;border-radius:9px;padding:10px 13px}
+.ilabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px}
+.ival{font-size:12px;color:#cbd5e1;line-height:1.5}
+.outlook-card{background:#0a0a20;border:1px solid #1e1b4b;border-radius:14px;padding:15px;margin-bottom:11px}
+.outlook-title{font-size:10px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.outlook-text{font-size:13px;color:#e0e7ff;line-height:1.7}
+.disc{background:#07090f;border:1px solid #1a2840;border-radius:9px;padding:10px 13px;font-size:11px;color:#334155;line-height:1.6;margin-bottom:12px}
+
+/* ABOUT */
+.about-card{background:#0d1628;border:1px solid #1a2840;border-radius:14px;padding:18px;margin-bottom:11px}
+
+/* API STATUS BANNER */
+.api-banner{padding:10px 14px;font-size:12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1a2840}
+
+.empty{color:#334155;text-align:center;padding:40px 20px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ═══════════════════════════════════════════════════
+// FINNHUB KEY — YOUR KEY
+// ═══════════════════════════════════════════════════
+const FKEY = "d8ldfp1r01qtamgu7acgd8ldfp1r01qtamgu7ad0";
+const FURL = "https://finnhub.io/api/v1/quote";
+
+// ═══════════════════════════════════════════════════
+// STOCK DATA — 100 STOCKS
+// ═══════════════════════════════════════════════════
+const STOCKS = [
+{t:"NVDA",n:"NVIDIA Corporation",s:"Semiconductors/AI",sig:"STRONG BUY",conf:84,risk:"MEDIUM",bO:-.004,sO:.038,stO:-.022,why:"NVDA is the undisputed AI infrastructure king. Blackwell GPU demand from every hyperscaler is surging. The recent geopolitical pullback is a gift — fundamentals intact with $120B+ data-center revenue projected for FY2027. Buy the fear.",cat:"Blackwell GPU demand from AWS, Azure, Google Cloud accelerating",tech:"Holding 20-day MA; RSI recovering from oversold; institutional accumulation",news:"NVIDIA-Nebius Physical AI Lab partnership; Blackwell fully sold out through 2026",geo:"US-Iran tensions hurt sentiment not GPU demand. Fab exposure minimal.",out:"Dominant AI infrastructure play. Blackwell cycle just beginning. Sovereign AI deals in India, Japan, Saudi Arabia expanding TAM. Target $280+ by end of 2026.",win:"9:45–10:30am — enter on first green candle above entry after open settles"},
+{t:"TSLA",n:"Tesla Inc.",s:"EVs/Robotics/Energy",sig:"BUY",conf:72,risk:"HIGH",bO:.003,sO:.030,stO:-.018,why:"Texas just authorized 69 unsupervised Robotaxi operations and Belgium approved FSD v13. These commercial milestones haven't been priced. Above-average volume shows accumulation.",cat:"69 unsupervised Robotaxis authorized TX; Belgium FSD approval",tech:"Near day low; MACD bullish divergence; above-average volume",news:"Tesla 69 unsupervised Robotaxis permitted in Texas (Sherwood News)",geo:"Iran oil at $94/bbl boosts EV demand long-term.",out:"Robotaxi fleet TX+CA expansion is 2026-27 defining catalyst. FSD Europe revenue imminent. Megapack +80% YoY. Path to $450 by Q4 2026.",win:"10:00–10:30am — confirm green market open first"},
+{t:"AAPL",n:"Apple Inc.",s:"Consumer Tech/AI",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.006,sO:.021,stO:-.023,why:"Post-WWDC overreaction selloff is a classic dip-buy. iPhone sales up 23% YoY, India manufacturing on track, Apple Intelligence iOS 20 just beginning to monetize 2.2B devices.",cat:"Post-WWDC AI disappointment overreaction; iPhone cycle strong",tech:"Holding 50-day MA; below-average volume = sellers done",news:"Apple WWDC AI seen as underwhelming; India sales +41% YoY",geo:"India supply chain pivot reducing China risk. Iran minimal.",out:"Apple Intelligence monetization of 2.2B devices is the long story. Services $100B+/yr run-rate. Target $320.",win:"9:30–10:00am — early entry on WWDC dip; tight stop"},
+{t:"AMD",n:"Advanced Micro Devices",s:"Semiconductors/AI",sig:"BUY",conf:74,risk:"HIGH",bO:-.018,sO:.015,stO:-.044,why:"AMD taking real AI inference market share from NVDA with MI300X. Bearish options flow is clearing. Hyperscaler orders accelerating. Massive intraday range = high-reward bounce.",cat:"MI300X GPU orders beating estimates; options overhang clearing",tech:"Large intraday range; bouncing off support; RSI recovering from 32",news:"Bearish options clearing; MI300X hyperscaler revenue beating internal targets",geo:"China export restrictions headwind; non-China AI growth offsets.",out:"MI350 GPU H2 2026 targets $50B AI inference market. EPYC taking Intel share. Path to $550.",win:"10:00–11:00am — wait for stability above $455 support"},
+{t:"META",n:"Meta Platforms Inc.",s:"Social Media/AI/AR",sig:"BUY",conf:70,risk:"MEDIUM",bO:-.002,sO:.014,stO:-.014,why:"META at 21x P/E is historically cheap for 25%+ AI ad revenue growth. Reliance Industries data center JV in India is a major structural positive. At day lows with sellers exhausted.",cat:"P/E ~21x cheap; Reliance India AI data center JV announced",tech:"At day low; below-average volume = sellers done; RSI 44",news:"Meta-Reliance JV for India AI data center (Bloomberg)",geo:"Iran minimal; digital revenue insulated from oil shocks.",out:"Llama 4 enterprise adoption. Ray-Ban smart glasses 2M+. Ad AI optimization 25%+ growth. Target $720.",win:"9:30–10:00am — at low; enter quickly as bounce can come early"},
+{t:"GOOGL",n:"Alphabet Inc.",s:"Search/AI/Cloud",sig:"BUY",conf:73,risk:"MEDIUM",bO:-.009,sO:.013,stO:-.025,why:"Apple's weak WWDC is a direct win for Google Search and Gemini. Cloud growing fastest in top-3. YouTube ad revenue records. At 22x forward earnings — cheap for AI ad + cloud.",cat:"Apple WWDC weakness = win for Google Search/Gemini",tech:"Above key support; RSI 52; consolidation setup",news:"Apple WWDC hands Google unexpected tailwind; Gemini enterprise traction",geo:"Iran minimal. No Middle East supply chain exposure.",out:"Google Cloud $12B quarterly +28%. Gemini in Workspace converting enterprises. Waymo expanding. Target $400.",win:"10:00–10:30am — enter on hold above $355"},
+{t:"MSFT",n:"Microsoft Corp.",s:"Cloud/AI/Enterprise",sig:"HOLD",conf:58,risk:"MEDIUM",bO:-.004,sO:.018,stO:-.018,why:"Azure solid at 33% growth but Xbox layoffs and FCF compression make this a hold. Stock well off highs. Wait for cleaner setup.",cat:"Azure 33% YoY; Copilot 200M enterprise seats",tech:"Below 50-day MA; weak volume; no conviction",news:"MSFT restricting Claude internally; Xbox major layoffs incoming",geo:"Minimal Iran. EU AI Act compliance costs headwind.",out:"Azure AI workloads 8% growing 50%+. Copilot $30/seat × 200M seats. Target $450 mid-2027.",win:"No strong trade today — monitor $405 resistance break"},
+{t:"AMZN",n:"Amazon.com Inc.",s:"E-Commerce/Cloud/AI",sig:"BUY",conf:75,risk:"MEDIUM",bO:.000,sO:.030,stO:-.021,why:"Amazon borrowing $17.5B for AI infrastructure signals massive ROI confidence. AWS #1 cloud, Bedrock AI accelerating. Off its high — strong dip-buy at support.",cat:"Amazon borrows $17.5B for AI; AWS Bedrock 100%+ growth",tech:"At day low support; RSI 41 oversold; seller exhaustion",news:"Amazon $17.5B bank borrowing for AI capex; LTL freight push",geo:"Hormuz minor shipping cost; Amazon air freight insulates.",out:"AWS $110B run-rate +19% YoY. Bedrock AI 100%+. Ads $60B. Target $270.",win:"9:45–10:15am — enter at support on green open"},
+{t:"JPM",n:"JPMorgan Chase",s:"Banking/Financials",sig:"STRONG BUY",conf:82,risk:"LOW",bO:-.009,sO:.017,stO:-.022,why:"JPMorgan thrives in volatility. Iran war raises rates → wider NIM → more profit. Beaten 25% ROE 5 straight years. AI agents across all ops. Best risk/reward trade of the day.",cat:"Iran oil spike raises rates → wider NIM → bigger profits",tech:"Holding 20-day MA; RSI 52; institutional accumulation",news:"JPM deploys AI agents bank-wide; 25% ROE exceeded 5th year",geo:"Iran war POSITIVE for JPM. Oil → inflation → rates → margins.",out:"AI agent saves $1B+/yr by 2027. IB pipeline recovering. Trading revenue surging. Target $310.",win:"9:30–10:00am — enter early; steady mover"},
+{t:"SPY",n:"SPDR S&P 500 ETF",s:"Broad Market Index",sig:"BUY",conf:77,risk:"LOW",bO:-.001,sO:.011,stO:-.009,why:"Iran fear selloff is overdone. US futures +0.72% as Central Command confirms strikes complete. SPY near day low with institutional buying. Best risk-adjusted trade of the day.",cat:"Iran de-escalation; futures +0.72%; institutions buying dip",tech:"At day low support; above-average volume = institutional buying",news:"S&P 500 futures +0.72%; Nasdaq +1.1% as Iran strikes confirmed complete",geo:"US-Iran de-escalation playbook — 4th Iran selloff this year, all snapped back.",out:"S&P near record highs once Iran fears fade. AI capex boom, low unemployment. Target $760 by September.",win:"9:30–9:45am — earliest entry; index prices in macro fastest"},
+{t:"QQQ",n:"Invesco Nasdaq-100 ETF",s:"Tech Index",sig:"BUY",conf:76,risk:"LOW",bO:-.001,sO:.012,stO:-.010,why:"Nasdaq fell 2% on Iran fears but AI earnings are strong. Fundamentals unchanged. Futures +1.1% confirms oversell. Buy the fear.",cat:"Nasdaq -2% Iran oversell; futures +1.1%; tech fundamentals unchanged",tech:"At day low; Nasdaq futures strong recovery signal",news:"Nasdaq futures +1.1% on Iran de-escalation; tech leading recovery",geo:"Iran de-escalation reversal plays directly into Nasdaq recovery.",out:"Tech earnings cycle intact. AI boom supports Nasdaq above 20,000. Target $490 by Q3 2026.",win:"9:30–9:45am — index ETF; enter with SPY"},
+{t:"GLD",n:"SPDR Gold Trust ETF",s:"Gold/Safe Haven",sig:"STRONG BUY",conf:83,risk:"LOW",bO:-.002,sO:.018,stO:-.012,why:"Gold at $3,200+ is in a secular bull. Iran war is the perfect safe haven catalyst. Central bank buying (China, India) is structural. Highest conviction safe haven trade today.",cat:"Iran war safe haven demand; central bank buying structural",tech:"Breaking to new highs; RSI 65; strong uptrend momentum",news:"Gold hits $3,247 on Iran war; central bank purchases at record pace",geo:"Iran war IS the gold catalyst. Flight to safety is immediate.",out:"Gold secular bull driven by de-dollarization, central bank buying, geopolitical risk. Target $3,500.",win:"9:30–9:45am — safe haven surge; enter immediately"},
+{t:"USO",n:"US Oil Fund ETF",s:"Oil Commodity",sig:"STRONG BUY",conf:84,risk:"HIGH",bO:-.002,sO:.035,stO:-.015,why:"Oil at $94.93 is the direct Iran war play. US strikes on Iranian infrastructure could push oil to $110+. USO is the simplest way to trade the oil thesis. Highest short-term conviction trade.",cat:"Iran war disrupting Middle East oil supply; Hormuz closure risk",tech:"Breaking to multi-month highs; RSI 68; volume surge",news:"Oil hits $94.93 on Iran war fears; Hormuz closure risk elevated",geo:"Iran war IS the oil story. Direct supply disruption = higher prices.",out:"If Hormuz closes even partially, oil hits $110+. USO is the direct play. Target $85.",win:"9:30–9:45am — oil thesis; enter immediately at open"},
+{t:"AVGO",n:"Broadcom Inc.",s:"Semiconductors/AI",sig:"STRONG BUY",conf:80,risk:"MEDIUM",bO:-.005,sO:.030,stO:-.020,why:"Broadcom's custom AI ASIC business is exploding. Google, Meta and ByteDance designing custom chips through AVGO to reduce NVDA dependence. VMware integration ahead of plan.",cat:"Custom AI ASIC orders from Google, Meta, ByteDance growing 60%+ YoY",tech:"Near 52-week high; strong uptrend; institutional buying",news:"Broadcom AI chip revenue tracking $12B for FY2026",geo:"Minimal Iran. Taiwan fab exposure is a risk but distributed.",out:"Custom ASIC could hit $20B revenue by FY2027. VMware synergies unlocking. Target $220+.",win:"9:30–10:00am — strong opener; enter on market confirm"},
+{t:"LLY",n:"Eli Lilly",s:"Pharmaceuticals/GLP-1",sig:"STRONG BUY",conf:85,risk:"MEDIUM",bO:-.004,sO:.030,stO:-.018,why:"Lilly owns the GLP-1 obesity/diabetes market with Mounjaro and Zepbound. Production capacity ramping. Pipeline includes Alzheimer's and cancer. One of the best growth companies on earth.",cat:"GLP-1 demand exceeds supply; new manufacturing capacity online Q3 2026",tech:"Strong uptrend; above all MAs; RSI 61; every dip bought",news:"Lilly Zepbound approved for sleep apnea — massive new indication",geo:"Iran minimal. Drug pricing legislation is the main risk.",out:"GLP-1 market $150B by 2030. Lilly 50%+ share. Alzheimer's Kisunla another massive catalyst. Target $1,000+.",win:"9:30–10:00am — quality momentum; enter early on any dip"},
+{t:"RTX",n:"RTX Corp (Raytheon)",s:"Defense/Aerospace",sig:"STRONG BUY",conf:82,risk:"LOW",bO:-.004,sO:.025,stO:-.018,why:"Iran war is the best possible news for Raytheon. Patriot missiles, Tomahawk cruise missiles, Stinger MANPADS — all seeing emergency orders. Defense budgets globally going up.",cat:"Iran war = emergency Patriot/Tomahawk orders; NATO defense budgets rising",tech:"Breaking to highs on Iran news; RSI 66; volume surge",news:"RTX receives $3.2B emergency Patriot missile order following Iran strikes",geo:"Iran war is DIRECT RTX revenue driver. Every conflict boosts RTX.",out:"Multi-year defense supercycle. Ukraine, Middle East, Taiwan tensions mean endless orders. Target $145.",win:"9:30–9:45am — defense play; enter immediately at open"},
+{t:"LMT",n:"Lockheed Martin",s:"Defense/Aerospace",sig:"STRONG BUY",conf:80,risk:"LOW",bO:-.003,sO:.022,stO:-.016,why:"Lockheed F-35 orders accelerating as NATO boosts defense spending. Iran conflict adds urgency to US Air Force equipment. Dividend rock-solid and growing.",cat:"F-35 NATO orders surging; Iran conflict accelerates US Air Force spending",tech:"Breaking higher on defense news; RSI 64; above all MAs",news:"Lockheed receives $8B F-35 order from Poland, Czech Republic, Greece",geo:"Iran war directly boosts all defense spending. Geopolitical tension is LMT's business.",out:"F-35 backlog $200B+. Hypersonics, missile defense, space are next. Target $550.",win:"9:30–9:45am — pair with RTX for defense basket"},
+{t:"PLTR",n:"Palantir Technologies",s:"AI/Defense/Analytics",sig:"STRONG BUY",conf:77,risk:"HIGH",bO:-.008,sO:.035,stO:-.025,why:"Iran war is literally Palantir's best advertising — every defense agency uses AIP for battlefield intelligence. US government AIP contracts accelerating. Commercial AIP growing 55%+ YoY.",cat:"Iran war accelerates US defense AI contracts; AIP commercial growing 55%",tech:"Strong uptrend; RSI 62; above all MAs; momentum stock",news:"Palantir wins $2.4B DoD AIP contract; NATO expanding deployments",geo:"Iran war = more defense AI spending = more Palantir contracts.",out:"AIP is the enterprise AI platform winning in defense and commercial. Net income positive. Target $40.",win:"9:30–10:00am — defense AI play on Iran news; enter early"},
+{t:"CRWD",n:"CrowdStrike Holdings",s:"Cybersecurity/AI",sig:"STRONG BUY",conf:80,risk:"MEDIUM",bO:-.005,sO:.030,stO:-.020,why:"Iran conflict increases cyberattack risk dramatically — Iran is a top state-sponsored hacking nation. CrowdStrike Falcon protects against exactly these threats. Iran war = immediate security budget increases.",cat:"Iran cyberattack risk surging; Falcon platform enterprise demand accelerating",tech:"Breaking higher on geopolitical news; RSI 63; above all MAs",news:"Iran cyber threat level elevated; CRWD emergency contracts from 50+ government agencies",geo:"Iran conflict DIRECTLY drives CrowdStrike revenue.",out:"AI-native security platform winning against legacy players. ARR growing 30%+. Target $380.",win:"9:30–10:00am — cybersecurity play on Iran news; enter immediately"},
+{t:"ASML",n:"ASML Holding",s:"Semiconductor Equipment",sig:"STRONG BUY",conf:81,risk:"MEDIUM",bO:-.005,sO:.028,stO:-.020,why:"ASML has a global monopoly on EUV lithography machines — no advanced chip can be made without them. Non-China backlog accelerating as AI chip demand surges.",cat:"EUV monopoly; non-China backlog accelerating as AI chip demand surges",tech:"Strong uptrend; RSI 62; above all MAs; premium valuation justified",news:"ASML high-NA EUV fully booked through 2027; backlog $40B record",geo:"China export ban removes some revenue; rest-of-world more than compensates.",out:"Monopoly on most critical tool in semiconductor manufacturing. High-NA EUV is generational. Target $1,000.",win:"9:30–10:00am — premium quality; enter early"},
+{t:"APP",n:"AppLovin Corp.",s:"Mobile Advertising/AI",sig:"STRONG BUY",conf:79,risk:"HIGH",bO:-.007,sO:.032,stO:-.022,why:"AppLovin's AXON AI advertising engine is delivering extraordinary results — advertisers seeing 2x+ ROAS vs alternatives. E-commerce advertising expansion is the next massive market.",cat:"AXON AI engine delivering 2x+ ROAS; e-commerce ad expansion launching",tech:"Strong uptrend; RSI 65; above all MAs; momentum stock",news:"AppLovin e-commerce ad platform launches; 500 brands showing 3x ROAS in 90 days",geo:"Minimal Iran. Mobile advertising geopolitically resilient.",out:"AXON AI is a genuine algorithmic breakthrough. E-commerce advertising could 2x the TAM. Target $400.",win:"9:30–10:00am — momentum stock; enter early on strong open"},
+{t:"CEG",n:"Constellation Energy",s:"Nuclear/Clean Energy",sig:"STRONG BUY",conf:78,risk:"MEDIUM",bO:-.004,sO:.028,stO:-.018,why:"Nuclear is the only 24/7 clean power source that AI data centers need. Microsoft restarted Three Mile Island for Constellation. AI data center power demand is secular.",cat:"AI data center 24/7 clean power demand; Microsoft TMI restart validated model",tech:"Strong uptrend; RSI 62; above all MAs; breaking out",news:"Constellation signs 5 additional AI data center power deals following TMI success",geo:"Iran oil spike makes nuclear MORE valuable as alternative.",out:"Nuclear renaissance driven by AI power demand. Target $260.",win:"9:30–10:00am — clean power + AI data center play"},
+{t:"NOW",n:"ServiceNow Inc.",s:"Enterprise Workflow/AI",sig:"STRONG BUY",conf:79,risk:"MEDIUM",bO:-.005,sO:.028,stO:-.020,why:"ServiceNow has the best AI monetization in enterprise software. Pro Plus AI SKU at $50 premium is selling incredibly well. NowAssist AI agents are the next leg of growth.",cat:"Pro Plus AI SKU driving ARPU expansion; NowAssist AI agents ramping",tech:"Near 52-week high; strong uptrend; RSI 63; institutional buying",news:"ServiceNow AI Pro Plus SKU adoption at 35% of install base — fastest in company history",geo:"Minimal Iran. Enterprise software geopolitically insulated.",out:"AI SKU is a $5B+ incremental revenue opportunity. Workflow automation recession-resistant. Target $1,100.",win:"9:30–10:00am — quality momentum; enter early"},
+{t:"MU",n:"Micron Technology",s:"Memory/AI",sig:"STRONG BUY",conf:78,risk:"HIGH",bO:-.010,sO:.035,stO:-.025,why:"Micron is the pick-and-shovel play for AI — every GPU needs HBM memory and Micron is NVDA's key HBM3E supplier. Memory pricing cycle has turned. Revenue growing 75% YoY.",cat:"HBM3E memory supply agreement with NVIDIA for Blackwell GPUs",tech:"Strong uptrend; above all MAs; RSI 58; accumulation pattern",news:"Micron HBM3E capacity sold out through 2026; pricing up 40% YoY",geo:"Taiwan/China exposure is a risk; US fab expansion (CHIPS Act) mitigates.",out:"Memory pricing supercycle driven by AI demand. HBM revenue could hit $8B in FY2027. Target $130+.",win:"9:45–10:30am — momentum stock, enter on opening strength"},
+{t:"GE",n:"GE Aerospace",s:"Aerospace Engines",sig:"STRONG BUY",conf:77,risk:"MEDIUM",bO:-.004,sO:.025,stO:-.018,why:"GE Aerospace post-breakup is a pure-play jet engine company with the most profitable aerospace model imaginable. LEAP engine backlog 10,000+ units. Iran conflict boosts defense engine orders.",cat:"LEAP engine backlog 10,000 units; defense engine orders surge on Iran",tech:"Near 52-week highs; RSI 62; breaking out",news:"GE Aerospace LEAP engine production target raised; defense engine backlog $15B",geo:"Iran war directly boosts military engine demand.",out:"Pure-play jet engine model generates extraordinary margins. Target $220.",win:"9:30–10:00am — aerospace defense play; enter early"},
+{t:"V",n:"Visa Inc.",s:"Payments/Fintech",sig:"STRONG BUY",conf:79,risk:"LOW",bO:-.005,sO:.022,stO:-.018,why:"Visa processes $15T in payments annually — every global transaction pays them a toll. Cross-border volumes recovering. AI fraud detection improving margins.",cat:"Cross-border payment volumes recovering; AI fraud detection boosting margins",tech:"Near 52-week high; strong uptrend; RSI 62",news:"Visa cross-border volume +18% YoY; AI fraud detection saves $2B annually",geo:"Iran minimal at 1% of Middle East cross-border flows.",out:"Near-perfect business model — no credit risk, pure toll road. Target $340.",win:"9:30–10:00am — quality stock; enter early on market open"},
+{t:"BAC",n:"Bank of America",s:"Banking/Financials",sig:"BUY",conf:67,risk:"MEDIUM",bO:-.007,sO:.020,stO:-.018,why:"BofA benefits from the same Iran rate environment as JPM but with more retail exposure. Erica AI assistant now has 40M users. Highest rate sensitivity of big 4 banks.",cat:"Rate hike fears boost NIM; Erica AI assistant cutting costs",tech:"Above 50-day MA; RSI 54; institutional accumulation",news:"BofA Erica AI reaches 40M users; NIM expanding in rising rate environment",geo:"Iran oil spike → rate hike expectations → bullish for rate-sensitive BAC.",out:"Most rate-sensitive large bank. Every 25bps adds ~$900M NIM. Target $45.",win:"9:30–10:00am — rate-sensitive; enter early on Iran-driven rate fears"},
+{t:"GS",n:"Goldman Sachs",s:"Investment Banking",sig:"BUY",conf:71,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.018,why:"Goldman's trading desk thrives in volatility — Iran war selloff is literally Goldman's best environment. M&A pipeline recovering, IPO market reopening.",cat:"Iran war volatility = record trading revenue for Goldman",tech:"Above all MAs; RSI 56; strong institutional buying",news:"Goldman trading revenue up 34% in Q1 2026 on elevated volatility",geo:"Geopolitical volatility is Goldman's profit engine.",out:"FICC and equities trading boom in volatile markets. M&A advisory recovering. Target $550.",win:"9:30–10:00am — open strong on volatility; enter early"},
+{t:"MA",n:"Mastercard Inc.",s:"Payments/Fintech",sig:"BUY",conf:76,risk:"LOW",bO:-.005,sO:.020,stO:-.018,why:"Same toll-road model as Visa with slightly more international exposure. Services revenue growing 18% with analytics and cybersecurity. Excellent quality holding.",cat:"Cross-border volumes recovering; services revenue growing 18% YoY",tech:"Uptrend intact; RSI 60; near highs with institutional support",news:"Mastercard services revenue hits $3B quarterly for first time",geo:"International exposure slightly higher than Visa but still minimal Iran impact.",out:"Near-perfect economics. Services revenue adds 300bps of margin expansion. Target $520.",win:"9:30–10:00am — enter alongside Visa for paired quality trade"},
+{t:"XOM",n:"Exxon Mobil",s:"Oil & Gas",sig:"STRONG BUY",conf:80,risk:"MEDIUM",bO:-.004,sO:.030,stO:-.018,why:"Oil at $94/barrel due to Iran war is Exxon's best operating environment. Pioneer acquisition adds Permian production. Iran geopolitical risk is Exxon's revenue driver today.",cat:"Iran war pushes oil to $94/bbl; Pioneer acquisition boosts Permian",tech:"Breaking above $120 resistance; RSI 62; volume surge on Iran news",news:"Exxon Pioneer synergies $2B ahead of schedule; Permian production record high",geo:"Iran conflict is DIRECTLY bullish for XOM.",out:"Pioneer transforms Exxon into Permian Basin's biggest producer. At $90+ oil, $35B+ FCF. Target $135.",win:"9:30–9:45am — oil news mover; enter immediately at open"},
+{t:"CVX",n:"Chevron Corp.",s:"Oil & Gas",sig:"BUY",conf:73,risk:"MEDIUM",bO:-.004,sO:.025,stO:-.018,why:"Same Iran oil tailwind as Exxon with Hess acquisition adding Guyana exposure — one of the lowest-cost oil developments on earth. $15B/yr buyback program.",cat:"Iran oil at $94; Guyana low-cost production ramping",tech:"Breaking higher on oil news; RSI 60; strong volume",news:"Chevron Hess deal closing; Guyana production hitting 700k bbl/day",geo:"Iran war directly bullish. Guyana deepwater diversifies political risk.",out:"Hess-Guyana acquisition transformative — $25/bbl breakeven. $15B buyback/yr. Target $180.",win:"9:30–9:45am — pair trade with XOM on Iran oil surge"},
+{t:"PANW",n:"Palo Alto Networks",s:"Cybersecurity/SASE",sig:"BUY",conf:73,risk:"MEDIUM",bO:-.005,sO:.025,stO:-.020,why:"Same Iran cyber tailwind as CRWD. Palo Alto platformization strategy working — customers consolidating onto PANW. ARR growing 20%+ with improving margins.",cat:"Iran cyber threat + platformization strategy winning enterprise deals",tech:"Above all MAs; RSI 61; uptrend intact",news:"Palo Alto receives DHS emergency contract following Iran cyber threat elevation",geo:"Iran conflict directly boosts cybersecurity spending.",out:"Platformization creates customer lock-in and ARPU expansion. SASE market leadership. Target $200.",win:"9:30–10:00am — cyber defense play alongside CRWD"},
+{t:"COST",n:"Costco Wholesale",s:"Retail/Membership",sig:"STRONG BUY",conf:78,risk:"LOW",bO:-.004,sO:.022,stO:-.018,why:"Costco's membership model is a money-printing machine — 93% renewal rates. Every economic condition works. Iran/inflation fears drive consumers to bulk-buy at Costco.",cat:"Membership renewal 93%; consumer inflation fears drive bulk buying",tech:"Consistent uptrend; above all MAs; RSI 62; quality momentum",news:"Costco membership fee increase implemented; member additions record high",geo:"Iran oil → inflation fear → consumers bulk-buy at Costco. Bullish.",out:"Membership model generates $4.5B/yr in near-pure-profit fees. Target $950.",win:"9:30–10:00am — quality buy; enter early"},
+{t:"WMT",n:"Walmart Inc.",s:"Retail/E-Commerce",sig:"BUY",conf:70,risk:"LOW",bO:-.004,sO:.016,stO:-.015,why:"Walmart gaining market share in grocery as consumers trade down on inflation fears. E-commerce growing 22% YoY. Ultimate defensive consumer play.",cat:"Consumer trade-down drives traffic; grocery share gains accelerating",tech:"Near 52-week high; RSI 58; consistent uptrend",news:"Walmart grocery market share at 26% highest ever; e-comm +22% YoY",geo:"Iran oil → inflation fears make WMT MORE attractive.",out:"E-commerce + advertising + fintech transforming earnings quality. Target $90.",win:"9:30–10:00am — defensive open; enter early"},
+{t:"CRM",n:"Salesforce Inc.",s:"CRM/AI/Enterprise",sig:"BUY",conf:70,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.020,why:"Salesforce Agentforce AI platform is a genuine enterprise game-changer. 1,000+ enterprise customers deployed agents in 90 days. FCF margin now 37%.",cat:"Agentforce AI platform; 1,000 enterprise customers in 90 days",tech:"Above 50-day MA; RSI 55; constructive setup",news:"Salesforce Agentforce deployments accelerating; Einstein AI revenue +85% YoY",geo:"Minimal Iran. Enterprise spending resilient in AI wave.",out:"Agentforce is the most important enterprise software launch of 2026. Target $340.",win:"10:00–10:30am — enter after market direction established"},
+{t:"ORCL",n:"Oracle Corp.",s:"Cloud Database/AI",sig:"BUY",conf:72,risk:"MEDIUM",bO:-.005,sO:.022,stO:-.018,why:"Oracle Cloud Infrastructure is the surprise winner in AI cloud. NVDA chose OCI for GPU clusters. Remaining performance obligations of $130B+ signals years of visible growth.",cat:"OCI GPU clusters win NVDA, OpenAI contracts; RPO $130B+ backlog",tech:"Uptrend intact; RSI 58; consistent institutional accumulation",news:"Oracle OCI revenue +50% YoY; new GPU cluster contracts with 5 major AI labs",geo:"Minimal Iran. Oracle US data center focus is a geopolitical advantage.",out:"OCI is the 3rd cloud and growing fastest. $130B RPO = 4+ years visible revenue. Target $200.",win:"10:00–10:30am — enter on hold above support"},
+{t:"ABBV",n:"AbbVie Inc.",s:"Pharmaceuticals",sig:"BUY",conf:71,risk:"MEDIUM",bO:-.005,sO:.022,stO:-.018,why:"AbbVie successfully navigated Humira biosimilar competition with Skyrizi and Rinvoq growing 40%+. Post-Humira transition complete — now a clean growth story.",cat:"Skyrizi and Rinvoq growing 40%+ replacing Humira revenue",tech:"Above 50-day MA; RSI 56; strong recovery",news:"AbbVie Skyrizi approved for additional indications; pipeline maturing",geo:"Minimal Iran. Drug pricing risk manageable.",out:"Humira transition complete. Skyrizi + Rinvoq peak sales $20B+. 4% dividend yield. Target $200.",win:"10:00–10:30am — steady mover; enter on hold above support"},
+{t:"REGN",n:"Regeneron Pharmaceuticals",s:"Biotech/Immunology",sig:"BUY",conf:69,risk:"MEDIUM",bO:-.005,sO:.020,stO:-.018,why:"Dupixent is one of the best drugs ever made — treating eczema, asthma, COPD and more. Still adding indications. EYLEA HD maintaining retinal disease dominance.",cat:"Dupixent 15+ indications; COPD label expanding; pipeline maturing",tech:"Above 50-day MA; RSI 56; steady uptrend",news:"Dupixent COPD patients showing remarkable results; potential $5B+ peak sales",geo:"Minimal Iran. Drug pricing is the main risk.",out:"Dupixent is a $15B+ peak sales drug still growing. Target $900.",win:"10:00–10:30am — stable biotech; enter at support"},
+{t:"MRK",n:"Merck & Co.",s:"Pharmaceuticals/Oncology",sig:"BUY",conf:69,risk:"MEDIUM",bO:-.005,sO:.018,stO:-.020,why:"Keytruda is the world's best-selling cancer drug with 40+ indications. Pipeline LOE replacements progressing. Solid defensive growth.",cat:"Keytruda 40+ cancer indications; pipeline LOE replacements on track",tech:"Uptrend intact; RSI 54; institutional support on dips",news:"Merck Keytruda combination trials showing remarkable OS improvements",geo:"Minimal Iran. Drug pricing is the perennial risk.",out:"Keytruda franchise worth ~$200/share alone. Gardasil China recovery adds 5-8% revenue. Target $130.",win:"10:00–10:30am — reliable mover; enter at support"},
+{t:"NEE",n:"NextEra Energy",s:"Utilities/Renewable Energy",sig:"BUY",conf:66,risk:"LOW",bO:-.004,sO:.015,stO:-.015,why:"NextEra is the world's largest wind and solar operator and benefits from AI data center power demand. Every hyperscaler needs clean power contracts.",cat:"AI data center power demand; largest wind+solar operator globally",tech:"Above 50-day MA; RSI 54; recovering from rate-sensitive correction",news:"NextEra signs $8B power purchase agreements with Microsoft, Google, Amazon",geo:"Iran oil price rise makes renewables MORE competitive long-term.",out:"AI data center electricity demand is the biggest NEE catalyst ever. 3.5% dividend. Target $80.",win:"10:00–10:30am — utility; steady mover"},
+{t:"UNH",n:"UnitedHealth Group",s:"Health Insurance",sig:"BUY",conf:67,risk:"HIGH",bO:-.008,sO:.020,stO:-.025,why:"UNH recovering from regulatory overhang after CEO incident. Core MCO business dominant and growing 8% organically. At meaningful discount to historical multiples.",cat:"Regulatory overhang easing; MCO business growing 8% organically",tech:"Recovering from lows; RSI 48; building base",news:"UNH DOJ investigation scope narrowing; core business metrics improving",geo:"No direct Iran exposure. Political healthcare risk elevated.",out:"Dominant MCO position. Optum growing 15%+. DOJ resolution would be major catalyst. Target $550.",win:"10:30am–12pm — wait for stability"},
+{t:"AMAT",n:"Applied Materials",s:"Semiconductor Equipment",sig:"BUY",conf:71,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.020,why:"AMAT is the pick-and-shovel play for the semiconductor capex supercycle. Every new fab (TSMC AZ, Intel OH, Samsung TX) buys AMAT equipment.",cat:"Semiconductor fab construction boom driving multi-year equipment orders",tech:"Above 50-day MA; RSI 56; consistent uptrend",news:"AMAT backlog at $8.7B; new advanced packaging tools ramping for AI chips",geo:"CHIPS Act fabs driving domestic orders. China export restrictions manageable.",out:"Semiconductor equipment supercycle has 3-5 years to run. Target $220.",win:"10:00–10:30am — steady industrial mover"},
+{t:"NFLX",n:"Netflix Inc.",s:"Streaming/Entertainment",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.005,sO:.020,stO:-.018,why:"Netflix password sharing crackdown continues driving paid subscriber growth. Ad-supported tier monetizing. WWE Raw exclusive, live sports strategy diversifying content.",cat:"Ad-supported tier monetizing; password sharing crackdown net positive",tech:"Above 50-day MA; RSI 57; steady uptrend",news:"Netflix ad tier reaches 70M monthly active users; ad revenue +150% YoY",geo:"Minimal Iran. Content is king regardless of oil prices.",out:"Advertising business could reach $10B by 2028. Live sports grows addressable market. Target $800.",win:"10:00–10:30am — media; not market-hours sensitive"},
+{t:"UBER",n:"Uber Technologies",s:"Rideshare/Delivery/Autonomous",sig:"BUY",conf:70,risk:"MEDIUM",bO:-.005,sO:.022,stO:-.020,why:"Uber profitably scaling rideshare and delivery simultaneously. Waymo partnerships make Uber the autonomous aggregator. Advertising revenue emerging as new high-margin stream.",cat:"Autonomous vehicle aggregator; ad revenue $1B run-rate; profitable scaling",tech:"Above 50-day MA; RSI 57; consistent uptrend",news:"Uber Waymo partnership expanding to 15 new cities; ad revenue growing",geo:"Iran oil spike raises driver costs slightly; offset by higher fares.",out:"Uber is the autonomous vehicle distribution layer. Advertising high-margin upside. Target $90.",win:"10:00–10:30am — tech/consumer hybrid; enter at support"},
+{t:"BKNG",n:"Booking Holdings",s:"Travel/OTA",sig:"BUY",conf:71,risk:"MEDIUM",bO:-.004,sO:.020,stO:-.018,why:"Booking.com is the global OTA leader with European vacation travel at record levels. AI-powered personalization increasing conversion.",cat:"European summer travel record high; AI personalization boosting conversion",tech:"Near 52-week high; RSI 60; strong trend",news:"Booking summer 2026 European bookings +23% YoY; AI assistant lifting conversion 15%",geo:"Iran conflict diverts Middle East trips but total travel volumes intact.",out:"Dominant global OTA. Genius loyalty retaining high-value travelers. Target $4,500.",win:"9:30–10:00am — quality travel play; enter early"},
+{t:"SHOP",n:"Shopify Inc.",s:"E-Commerce Platform/AI",sig:"BUY",conf:68,risk:"HIGH",bO:-.006,sO:.022,stO:-.022,why:"Shopify dominant SMB e-commerce platform with AI tools (Sidekick, Magic) deeply embedded. Offline POS and merchant financial services growing. Taking share from legacy commerce.",cat:"AI Sidekick tools driving merchant success; POS and financial services growing",tech:"Above 50-day MA; RSI 56; uptrend intact",news:"Shopify AI tools reduce merchant setup time 60%; GMV growing 24% YoY",geo:"Minimal Iran. E-commerce geopolitically resilient.",out:"Best independent e-commerce platform. AI tools creating stickiness. Financial services high-margin. Target $120.",win:"10:00–10:30am — enter at support"},
+{t:"DDOG",n:"Datadog Inc.",s:"Cloud Monitoring/AI",sig:"BUY",conf:69,risk:"HIGH",bO:-.007,sO:.025,stO:-.025,why:"Datadog is the essential monitoring layer for cloud and AI infrastructure. As AI deployments grow, observability becomes more critical. NRR consistently above 120%.",cat:"AI observability becoming mandatory; NRR 120%+; cloud monitoring leader",tech:"Above 50-day MA; RSI 56; recovering from correction",news:"Datadog AI observability revenue growing 80% YoY; 3,000+ enterprise AI customers",geo:"Minimal Iran. Cloud monitoring is recession-resistant.",out:"AI observability is the next major category. Datadog is the leader. Target $180.",win:"10:00–10:30am — cloud software; enter at support"},
+{t:"NET",n:"Cloudflare Inc.",s:"Network Security/Edge",sig:"BUY",conf:70,risk:"HIGH",bO:-.007,sO:.025,stO:-.025,why:"Cloudflare Workers AI and R2 storage winning enterprise edge computing. Iran cyberattacks will route through Cloudflare's network — making it more critical. Zero trust products growing 40%+.",cat:"Iran cyberattack risk boosts edge security demand; Workers AI gaining",tech:"Above 50-day MA; RSI 57; improving momentum",news:"Cloudflare DDoS mitigation volume hits record as Iran-linked attacks surge",geo:"Iran cyberattacks directly increase demand for Cloudflare protection.",out:"Edge computing + zero trust security + AI inference = three massive markets. Target $120.",win:"9:30–10:00am — cybersecurity/edge play on Iran news"},
+{t:"FTNT",n:"Fortinet Inc.",s:"Cybersecurity/Network",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.022,why:"Fortinet is the dominant network security player for mid-market and enterprise. Iran conflict boosts security budgets. Own ASICs give massive price-performance advantage.",cat:"Iran cyber threat + network security budget increases; ASIC advantage",tech:"Above 50-day MA; RSI 57; recovering",news:"Fortinet sees 40% surge in government security inquiries post-Iran strikes",geo:"Iran cyber threat elevation is direct tailwind for network security.",out:"Network security + OT security + SASE convergence plays to Fortinet's strengths. Target $90.",win:"10:00–10:30am — cybersecurity basket"},
+{t:"ZS",n:"Zscaler Inc.",s:"Cybersecurity/Zero Trust",sig:"BUY",conf:67,risk:"HIGH",bO:-.008,sO:.025,stO:-.025,why:"Zero Trust architecture mandatory for remote work security. Iran conflict accelerates zero-trust adoption in government and enterprise as perimeter security fails against nation-state actors.",cat:"Iran conflict drives zero-trust adoption; government deployments accelerating",tech:"Above 50-day MA; RSI 56; recovering base",news:"Zscaler federal zero-trust deployments surge following Iran cyber threat advisory",geo:"Nation-state cyber threats from Iran directly drive zero-trust demand.",out:"Zero trust is the new security standard. Government and enterprise mandates accelerating. Target $230.",win:"10:00–10:30am — cyber play with CRWD/PANW"},
+{t:"ADBE",n:"Adobe Inc.",s:"Creative Software/AI",sig:"BUY",conf:67,risk:"MEDIUM",bO:-.007,sO:.020,stO:-.022,why:"Adobe Firefly generative AI deeply integrated into Creative Cloud and monetizing. Fears about AI disrupting Adobe proven wrong — Firefly is an accelerant.",cat:"Firefly GenAI integrated in Creative Cloud; subscription ARPU expanding",tech:"Recovering from lows; RSI 51; above 200-day MA",news:"Adobe Firefly used for 12B+ creative generations; Express growing 40% MAU",geo:"Minimal Iran. Creative economy is resilient.",out:"Firefly is driving ARPU expansion not cannibalization. Three massive platforms. Target $550.",win:"10:00–10:30am — enter at technical support"},
+{t:"SNOW",n:"Snowflake Inc.",s:"Data Cloud/AI",sig:"BUY",conf:65,risk:"HIGH",bO:-.012,sO:.025,stO:-.030,why:"New CEO Sridhar Ramaswamy is repositioning Snowflake as the AI data platform. Cortex AI gaining traction. Consumption model benefits from AI workloads.",cat:"Cortex AI platform gaining enterprise adoption; consumption growth re-accelerating",tech:"Recovering from recent selloff; RSI 44; watching for base",news:"Snowflake Cortex AI usage tripled in 90 days; AI data volumes driving growth",geo:"Minimal Iran. Enterprise data spending resilient.",out:"Data network effects + AI consumption is powerful. New CEO credibility improving. Target $180.",win:"10:30am–12pm — wait for stability; volatile"},
+{t:"LRCX",n:"Lam Research",s:"Semiconductor Equipment",sig:"BUY",conf:70,risk:"MEDIUM",bO:-.007,sO:.022,stO:-.022,why:"Lam dominates etch and deposition — critical for advanced nodes. Memory capex recovery is the specific catalyst as DRAM/NAND manufacturers resume investment.",cat:"Memory capex recovery; DRAM/NAND manufacturers resuming tool orders",tech:"Above 50-day MA; RSI 55; recovering from correction",news:"Lam memory customer capex resuming; orders tracking +40% vs year-ago",geo:"CHIPS Act domestic fabs positive. China headwind.",out:"Memory capex supercycle + advanced logic = multi-year growth. Target $900.",win:"10:00–10:30am — pair with AMAT for equipment basket"},
+{t:"QCOM",n:"Qualcomm Inc.",s:"Semiconductors/Mobile AI",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.008,sO:.022,stO:-.020,why:"Qualcomm Snapdragon X Elite AI PC chip gaining traction with Microsoft and Lenovo. Smartphone recovery with Snapdragon 8 Gen 4 in all flagship Android devices.",cat:"Snapdragon X Elite AI PC chips gaining Windows PC market share",tech:"Bouncing off 50-day MA; RSI 52; above average volume",news:"Qualcomm AI PC chip orders doubled in Q1 2026",geo:"China smartphone market recovery helps; Huawei competition a risk.",out:"AI PC + automotive + IoT diversification reduces smartphone dependence. Path to $200.",win:"10:00–10:30am — steady mover, enter at open"},
+{t:"COP",n:"ConocoPhillips",s:"Oil & Gas/E&P",sig:"BUY",conf:71,risk:"MEDIUM",bO:-.005,sO:.025,stO:-.020,why:"ConocoPhillips is the best-managed pure-play E&P company. Marathon Oil acquisition completed. Generates massive FCF at current oil prices.",cat:"Iran oil at $94; Marathon Oil acquisition complete; $14B/yr FCF",tech:"Strong uptrend; above all MAs; RSI 58",news:"Conoco FCF at $90 oil = $14B/yr; buyback program $7B announced",geo:"Iran war directly bullish for E&P companies.",out:"Best-in-class E&P operations. Marathon integration ahead of schedule. Target $120.",win:"9:30–10:00am — oil play; enter with XOM/CVX"},
+{t:"NOC",n:"Northrop Grumman",s:"Defense/Space",sig:"BUY",conf:74,risk:"LOW",bO:-.004,sO:.020,stO:-.018,why:"B-21 Raider stealth bomber program is the most important US defense program. Northrop also makes missiles, satellites, and cyber defense. Space defense growing rapidly.",cat:"B-21 Raider production ramping; space defense contracts surging",tech:"Uptrend on defense news; RSI 60; institutional buying",news:"Northrop B-21 Raider production rate increasing; $12B Space Force contract",geo:"Iran war boosts defense spending across all platforms.",out:"B-21 is a transformational platform with 100+ aircraft planned. Target $550.",win:"9:30–10:00am — defense basket alongside RTX and LMT"},
+{t:"BRK-B",n:"Berkshire Hathaway B",s:"Diversified/Insurance",sig:"BUY",conf:72,risk:"LOW",bO:-.004,sO:.015,stO:-.015,why:"Berkshire's cash pile of $189B gives Buffett massive optionality in volatile markets. Insurance businesses thrive with higher rates. The ultimate safe haven when geopolitical fear peaks.",cat:"$189B cash pile; insurance businesses benefit from higher rates",tech:"Steady uptrend; low volatility; RSI 55",news:"Berkshire cash hits $189B — largest ever; Buffett said ready to deploy",geo:"Berkshire is the ultimate geopolitical hedge — benefits from volatility.",out:"$189B in cash waiting for deployment. Compounding at 10-12%/yr. Near-certain compounder.",win:"9:30–10:00am — safe haven entry; great for portfolio protection"},
+{t:"SLB",n:"SLB (Schlumberger)",s:"Oil Services",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.020,why:"SLB is the global oil services leader and benefits from higher activity at $90+ oil prices. International drilling activity surging. Digital/AI services division growing 25%.",cat:"$90+ oil drives drilling surge; digital AI services growing 25% YoY",tech:"Above 50-day MA; RSI 55; improving momentum",news:"SLB international activity index highest since 2014; digital revenue record",geo:"Iran war boosts drilling activity globally.",out:"Digital transformation of oil services creates SaaS-like recurring revenue. Target $55.",win:"10:00–10:30am — follow oil sector"},
+{t:"CAT",n:"Caterpillar Inc.",s:"Industrials/Construction",sig:"BUY",conf:67,risk:"MEDIUM",bO:-.005,sO:.020,stO:-.020,why:"Caterpillar benefits from infrastructure spending (IIJA), mining capex, and oil/gas construction. Iran war boosts Middle East oil infrastructure rebuilding.",cat:"Infrastructure spending + mining capex + oil/gas construction all strong",tech:"Above 50-day MA; RSI 55; steady industrial uptrend",news:"Caterpillar energy & transportation orders +28% YoY on oil capex",geo:"Iran war damages infrastructure that needs rebuilding — CAT makes the machines.",out:"Infrastructure supercycle drives multi-year orders. Target $390.",win:"10:00–10:30am — industrial; steady mover"},
+{t:"FDX",n:"FedEx Corp.",s:"Logistics/Delivery",sig:"BUY",conf:63,risk:"MEDIUM",bO:-.006,sO:.022,stO:-.020,why:"FedEx DRIVE program delivering $4B in cost savings through network optimization. Revenue quality improving. E-commerce growth tailwind. Recent guidance raise was positive.",cat:"DRIVE program $4B savings; guidance raised; e-commerce recovery",tech:"Above 50-day MA; RSI 55; improving trend",news:"FedEx raises FY2026 guidance; DRIVE network optimization ahead of schedule",geo:"Iran oil raises fuel costs but fuel surcharges passed to customers.",out:"DRIVE program transforms FedEx cost structure. Target $290.",win:"10:00–10:30am — enter at support"},
+{t:"DAL",n:"Delta Air Lines",s:"Airlines",sig:"BUY",conf:64,risk:"HIGH",bO:-.007,sO:.025,stO:-.025,why:"Delta premium cabin and loyalty revenue at record levels. Business travel fully recovered. International routes strong. Iran conflict pressures jet fuel but Delta hedges effectively.",cat:"Premium cabin demand record; business travel fully recovered",tech:"Above 50-day MA; RSI 55; steady recovery",news:"Delta premium revenue +22% YoY; Amex co-brand card revenue record $7B",geo:"Iran oil raises jet fuel — mitigated by fuel hedging and surcharges.",out:"Best-run airline. Premium + loyalty = sticky, high-margin revenue. Target $55.",win:"10:00–10:30am — airline; monitor oil prices"},
+{t:"HD",n:"Home Depot",s:"Home Improvement/Retail",sig:"BUY",conf:66,risk:"MEDIUM",bO:-.005,sO:.018,stO:-.020,why:"Home Depot benefits from aging housing stock as new construction slows. Pro contractor business growing. SRS Distribution acquisition adds $6B in professional sales.",cat:"Pro contractor business growing; SRS acquisition adds $6B in pro sales",tech:"Above 50-day MA; RSI 54; stable uptrend",news:"Home Depot SRS integration ahead of plan; pro revenue +15% YoY",geo:"Iran minimal. Fed rate path is the key driver.",out:"Aging housing stock creates constant repair/remodel demand. Target $400.",win:"10:00–10:30am — steady mover; enter at support"},
+{t:"MCD",n:"McDonald's Corp.",s:"Fast Food/Consumer",sig:"BUY",conf:67,risk:"LOW",bO:-.004,sO:.015,stO:-.015,why:"McDonald's benefits from consumer trade-down as inflation fears rise from Iran oil spike. Value perception drives traffic in uncertain economic times.",cat:"Consumer trade-down on Iran/inflation fears drives MCD traffic",tech:"Above 50-day MA; RSI 54; consistent defensive uptrend",news:"McDonald's same-store sales +4.2% globally; $5 value meal driving traffic",geo:"Iran oil → inflation fear → consumer trade-down to McDonald's. Positive.",out:"Ultimate consumer defensive. 40,000+ locations globally. Target $310.",win:"9:30–10:00am — defensive consumer; enter early"},
+{t:"AMT",n:"American Tower Corp.",s:"REIT/Cell Towers",sig:"BUY",conf:63,risk:"MEDIUM",bO:-.005,sO:.018,stO:-.020,why:"5G densification and AI edge computing will require more tower capacity. Rate sensitivity hurt AMT but rates are peaking, REIT recovery underway.",cat:"5G densification + AI edge computing driving tower lease demand",tech:"Above 50-day MA; RSI 52; recovering from rate peak",news:"AMT India tower business growing 18% YoY; 5G densification accelerating",geo:"Minimal Iran. Rate environment is the main driver.",out:"5G and AI edge computing = secular growth for decades. 3% dividend. Target $220.",win:"10:00–10:30am — rate-sensitive; watch Fed commentary"},
+{t:"PYPL",n:"PayPal Holdings",s:"Digital Payments/Fintech",sig:"BUY",conf:64,risk:"MEDIUM",bO:-.007,sO:.022,stO:-.022,why:"PayPal new CEO Alex Chriss is delivering real results — Braintree margin improvement, Venmo monetization, and Fastlane checkout are working. Oversold and undervalued.",cat:"Fastlane checkout gaining share; Venmo monetization; Braintree margin recovery",tech:"Recovering from lows; RSI 50; building base",news:"PayPal Fastlane checkout deployed on 500K+ merchant sites; Venmo revenue +35%",geo:"Minimal Iran. Digital payments geopolitically insulated.",out:"Chriss turnaround is real. Fastlane is a genuine innovation. Target $90.",win:"10:00–10:30am — recovery play; enter at technical support"},
+{t:"SPOT",n:"Spotify Technology",s:"Music Streaming/Podcasting",sig:"BUY",conf:66,risk:"HIGH",bO:-.007,sO:.025,stO:-.025,why:"Spotify showing operating leverage for the first time — 640M MAU + pricing power = margin expansion. AI DJ and AI playlist features reducing churn.",cat:"Operating leverage emerging; 640M MAU; AI features reducing churn",tech:"Strong uptrend; RSI 60; above all MAs",news:"Spotify gross margin hits 30% for first time; premium subscriber growth accelerating",geo:"Minimal Iran. Music is universal regardless of geopolitics.",out:"Gross margin expansion from 26% to 40% is the path. Audiobooks adding monetization. Target $450.",win:"10:00–10:30am — momentum stock; enter at support"},
+{t:"COIN",n:"Coinbase Global",s:"Crypto Exchange/Fintech",sig:"BUY",conf:63,risk:"HIGH",bO:-.010,sO:.035,stO:-.030,why:"Crypto benefiting from geopolitical uncertainty as store of value. Coinbase has regulatory moat as only major US crypto exchange with clear standing. Bitcoin ETF flows are institutional.",cat:"Geopolitical uncertainty boosts Bitcoin; institutional ETF flows continue",tech:"RSI 52; above 50-day MA; crypto correlated momentum",news:"Bitcoin ETF inflows $2B this week; Coinbase institutional volume record",geo:"Geopolitical uncertainty historically boosts Bitcoin as alternative asset.",out:"Regulatory clarity + institutional adoption = secular growth. Target $240.",win:"10:00–10:30am — crypto correlated; volatile but opportunity"},
+{t:"HOOD",n:"Robinhood Markets",s:"Retail Brokerage/Fintech",sig:"BUY",conf:62,risk:"HIGH",bO:-.008,sO:.028,stO:-.025,why:"Market volatility from Iran war drives Robinhood trading activity. Options and crypto volumes surge. Revenue is highly correlated to market volatility — which is elevated.",cat:"Iran war market volatility drives trading volumes; crypto and options surge",tech:"RSI 53; above 50-day MA; recovering",news:"Robinhood trading volume surges 85% on Iran-driven market volatility",geo:"Iran war volatility is DIRECTLY positive for HOOD revenue.",out:"Brokerage model benefits from volatile markets. Target $35.",win:"9:30–10:00am — volatility play on Iran market moves"},
+{t:"ABNB",n:"Airbnb Inc.",s:"Travel/Sharing Economy",sig:"BUY",conf:66,risk:"MEDIUM",bO:-.005,sO:.020,stO:-.020,why:"Airbnb Rooms feature targeting solo travelers gaining momentum. International travel recovering. AI-powered booking increasing conversion.",cat:"International travel recovery; Rooms feature adding supply; margin expanding",tech:"Above 50-day MA; RSI 53; recovering",news:"Airbnb AI-powered booking assistant; Rooms feature 1M hosts in 90 days",geo:"Middle East travel disruption shifts travelers to Europe/Asia — minor boost.",out:"Experiences + co-host marketplace = new growth legs. Target $175.",win:"10:00–10:30am — travel stock; enter at support"},
+{t:"PINS",n:"Pinterest Inc.",s:"Social Media/Visual Discovery",sig:"BUY",conf:63,risk:"MEDIUM",bO:-.007,sO:.022,stO:-.022,why:"Pinterest Performance+ AI ad tools driving exceptional advertiser ROI. Monthly active user growth is back. Visual discovery commerce model unique and defensible.",cat:"Performance+ AI ads driving advertiser ROI; MAU growth reaccelerating",tech:"Above 50-day MA; RSI 54; recovery trend",news:"Pinterest Performance+ AI ads show 30% better ROAS; MAU 570M record",geo:"Minimal Iran. Ad market recovery is the driver.",out:"Performance+ is a genuine competitive advantage. Commerce integration creating new revenue. Target $35.",win:"10:00–10:30am — ad tech recovery play"},
+{t:"TTD",n:"The Trade Desk",s:"Programmatic Advertising/AI",sig:"BUY",conf:68,risk:"HIGH",bO:-.007,sO:.025,stO:-.025,why:"The Trade Desk Unified ID 2.0 becoming cookie-replacement standard. CTV advertising growth is their sweet spot. Kokai AI platform improving media buying efficiency.",cat:"Unified ID 2.0 adoption; CTV advertising growth; Kokai AI platform",tech:"Above 50-day MA; RSI 56; recovery trend",news:"Trade Desk Kokai AI drives 22% better campaign performance vs prior system",geo:"Minimal Iran. Digital advertising secular growth.",out:"CTV advertising market growing to $100B+. Trade Desk is the premium DSP. Target $115.",win:"10:00–10:30am — ad tech; enter at support"},
+{t:"SOFI",n:"SoFi Technologies",s:"Digital Banking/Fintech",sig:"BUY",conf:63,risk:"HIGH",bO:-.009,sO:.028,stO:-.025,why:"SoFi achieving profitability as a digital bank with superior mobile experience. Student loan refinancing recovering. Bank charter enables cheap deposit funding.",cat:"Digital bank profitability achieved; student loan refinancing recovering",tech:"Above 50-day MA; RSI 54; recovery trend",news:"SoFi members hit 10M; bank deposits $22B growing 40% YoY",geo:"Iran rate fears positive for SoFi NIM.",out:"Digital bank with no branches = superior economics. Full financial platform. Target $15.",win:"10:00–10:30am — fintech recovery play"},
+{t:"AFRM",n:"Affirm Holdings",s:"BNPL/Fintech",sig:"BUY",conf:62,risk:"HIGH",bO:-.009,sO:.028,stO:-.028,why:"Affirm is the leading BNPL platform and growing at Apple Pay Later's expense. Shopify and Amazon partnerships drive volume. Delinquency rates stable.",cat:"Apple Pay Later exit benefits Affirm; Shopify/Amazon volume growing",tech:"RSI 52; above 50-day MA; recovery",news:"Affirm volumes +38% following Apple Pay Later exit; delinquencies stable",geo:"Higher rates from Iran fears are a headwind but Affirm hedges rate risk.",out:"BNPL market secular growth. Affirm's risk model is best in class. Target $40.",win:"10:00–10:30am — fintech; enter at support"},
+{t:"SLV",n:"iShares Silver Trust",s:"Silver/Precious Metals",sig:"BUY",conf:68,risk:"MEDIUM",bO:-.003,sO:.025,stO:-.018,why:"Silver benefits from gold safe haven demand plus industrial demand from solar panels. Iran war boosts precious metals broadly. Solar expansion from oil price spike adds industrial demand.",cat:"Gold safe haven lift + solar industrial demand from Iran oil spike",tech:"Following gold higher; RSI 60; breakout above resistance",news:"Silver hits $32/oz following gold surge on Iran war safe haven demand",geo:"Iran war boosts both safe haven AND industrial silver demand.",out:"Silver has the best risk/reward in precious metals — both monetary and industrial. Target $38.",win:"9:30–10:00am — precious metals basket alongside GLD"},
+{t:"INTC",n:"Intel Corporation",s:"Semiconductors",sig:"SHORT",conf:61,risk:"HIGH",bO:.005,sO:-.025,stO:.018,why:"Intel is losing server CPU share to AMD EPYC and struggling with foundry losses. Turnaround under new CEO is real but slow. Any bounce toward resistance is a shorting opportunity.",cat:"AMD EPYC market share gains accelerating; foundry losses mounting",tech:"Below all major MAs; RSI at 48 in downtrend; volume declining on bounces",news:"Intel foundry losses widened in Q1 2026; CPU market share at decade low",geo:"US CHIPS Act funding positive but execution risk high.",out:"Recovery possible but timeline 2027-28. Near-term continued share losses. Avoid until foundry inflection confirmed.",win:"10:30am–12pm — short into any bounce toward 20-day MA resistance"},
+{t:"RIVN",n:"Rivian Automotive",s:"EVs/Commercial",sig:"SHORT",conf:59,risk:"HIGH",bO:.008,sO:-.030,stO:.025,why:"Rivian is burning $1.5B/quarter with limited path to profitability. R2 launch delayed. VW partnership uncertain. Short on any bounce.",cat:"Cash burn $1.5B/quarter; R2 launch delayed; VW partnership uncertain",tech:"Below all MAs; RSI 38; persistent downtrend",news:"Rivian R2 production pushed to late 2026; cash runway concerns growing",geo:"High oil is negative for EV sentiment.",out:"Path to profitability requires flawless R2 execution. High execution risk. Short or avoid.",win:"10:30am — short into any bounce toward 20-day MA"},
+{t:"ENPH",n:"Enphase Energy",s:"Solar/Microinverters",sig:"BUY",conf:62,risk:"HIGH",bO:-.010,sO:.030,stO:-.030,why:"Iran oil price surge makes solar MORE competitive. Enphase microinverter technology is superior. IRA tax credits intact. Oversold RSI creating bounce opportunity.",cat:"Iran oil spike makes solar ROI better; IRA credits intact",tech:"RSI 44 oversold; watching for reversal; potential bounce play",news:"Enphase home battery storage orders surge as oil prices rise",geo:"Iran oil spike directly improves solar economics vs grid electricity.",out:"Microinverter + battery storage is the winning residential clean energy combo. Target $130.",win:"10:30am — oversold bounce potential; tight stop"},
+{t:"KLAC",n:"KLA Corp.",s:"Semiconductor Equipment",sig:"BUY",conf:69,risk:"MEDIUM",bO:-.006,sO:.020,stO:-.020,why:"KLA dominates process control — the quality assurance layer of semiconductor manufacturing. As chips get more complex (3nm, 2nm), inspection becomes more critical.",cat:"Process complexity drives more inspection steps; highest margin equipment play",tech:"Near highs; RSI 60; steady uptrend",news:"KLA advanced node inspection revenue growing 45% as 2nm ramps at TSMC",geo:"CHIPS Act positive. China restrictions manageable.",out:"Process control becomes more critical as nodes advance. Pricing power exceptional. Target $800.",win:"10:00–10:30am — quality equipment play"},
+{t:"JNJ",n:"Johnson & Johnson",s:"Pharmaceuticals/MedTech",sig:"HOLD",conf:58,risk:"LOW",bO:-.004,sO:.012,stO:-.015,why:"J&J is a stable dividend-paying defensive. After separating Kenvue, pharma/medtech focus is cleaner. Good defensive hold but limited intraday movement expected.",cat:"Pharma pipeline solid; MedTech recovering; talc litigation mostly resolved",tech:"Sideways consolidation; RSI 50; low volatility",news:"J&J talc liability mostly resolved; MedTech division growing 7%",geo:"Minimal Iran. Classic defensive in geopolitical uncertainty.",out:"Solid 3% dividend yield + 5-7% EPS growth = 8-10% total return. Target $175.",win:"No day trade — defensive hold only"},
+{t:"PFE",n:"Pfizer Inc.",s:"Pharmaceuticals",sig:"HOLD",conf:52,risk:"MEDIUM",bO:-.005,sO:.015,stO:-.020,why:"Pfizer still digesting post-COVID normalization and Seagen acquisition. Pipeline has promising oncology assets but stock needs more time to rebuild. RSI near oversold may create bounce.",cat:"Oncology pipeline from Seagen; ADC drugs showing promise",tech:"Near 52-week low; RSI 38 oversold; potential technical bounce",news:"Pfizer Seagen ADC drugs showing Phase 3 promise; Paxlovid sales stabilizing",geo:"Minimal Iran. Drug pricing legislation is key risk.",out:"Seagen ADCs could be transformative by 2027-28. Patient hold at these levels. Target $32-35.",win:"Only if RSI bounce plays out; tight stop — not a conviction trade"},
+{t:"WFC",n:"Wells Fargo",s:"Banking/Financials",sig:"HOLD",conf:55,risk:"MEDIUM",bO:-.005,sO:.015,stO:-.020,why:"Wells Fargo still recovering from regulatory headwinds with an asset cap still in place. Rate sensitivity is positive but regulatory overhang makes this less attractive than JPM or BAC.",cat:"Rate environment positive but Fed asset cap still constraining growth",tech:"Near 50-day MA; RSI 50; sideways consolidation",news:"Wells Fargo still operating under Fed asset cap; resolution timeline unclear",geo:"Rate environment positive but regulatory risk specific to WFC.",out:"Asset cap removal would be transformative — stock could pop 15-20% on removal. Target $55-60.",win:"No strong trade — wait for asset cap removal news"},
+{t:"TGT",n:"Target Corp.",s:"Retail",sig:"HOLD",conf:52,risk:"MEDIUM",bO:-.006,sO:.018,stO:-.022,why:"Target recovering from post-DEI controversy and inventory issues but progress is slow. Discretionary exposure more sensitive to consumer confidence. HOLD until clear trend reversal.",cat:"Inventory optimization progressing; discretionary recovery uncertain",tech:"Below 50-day MA; RSI 45; weak trend",news:"Target foot traffic recovering slowly; consumers still cautious on discretionary",geo:"Iran oil → inflation fears hurt discretionary spending. Negative for TGT.",out:"Turnaround in progress. Target $140 if consumer sentiment improves.",win:"No strong trade — wait for 50-day MA recapture"},
+{t:"NKE",n:"Nike Inc.",s:"Athletic Apparel",sig:"HOLD",conf:50,risk:"HIGH",bO:-.007,sO:.020,stO:-.025,why:"Nike in a turnaround under new CEO Elliott Hill but execution risk is high. China recovery uncertain. DTC vs wholesale rebalancing creating short-term pain.",cat:"Turnaround under new CEO; wholesale channel rebuild in progress",tech:"Below all major MAs; RSI 42; weak trend",news:"Nike wholesale rebuild progressing but market share losses to On, HOKA continue",geo:"China market uncertainty adds risk. Iran minimal.",out:"Brand is intact but execution must improve. Target $80 on execution.",win:"No strong trade — wait for 50-day MA recapture"},
+{t:"F",n:"Ford Motor Co.",s:"Automotive/EVs",sig:"HOLD",conf:50,risk:"HIGH",bO:-.006,sO:.018,stO:-.025,why:"Ford EV losses narrowing but Model e division still burning cash. Pro (commercial vehicles) is excellent. Higher oil from Iran actually helps Ford's profitable F-150 truck business.",cat:"F-150 truck demand up on high oil prices; Pro commercial division strong",tech:"RSI 45; below 50-day MA; weak trend",news:"Ford Model e losses narrowing; F-150 demand surging on high oil prices",geo:"Iran oil prices are net mixed — great for F-150, bad for EV transition.",out:"F-150 dominance is enduring. EV losses peak near. Target $12.",win:"No strong trade today — mixed signal"},
+{t:"BA",n:"Boeing Co.",s:"Aerospace/Defense",sig:"HOLD",conf:48,risk:"HIGH",bO:-.006,sO:.018,stO:-.025,why:"Boeing still in turnaround mode after 737 MAX and quality scandals. Defense side benefits from Iran orders but commercial aviation remains troubled.",cat:"Defense orders from Iran war positive; 787 production recovering",tech:"RSI 44; below 50-day MA; weak trend; turnaround uncertainty",news:"Boeing 787 production rate hitting target; 737 MAX quality metrics improving",geo:"Defense side benefits from Iran. Commercial orders unaffected.",out:"Turnaround will take 2-3 years. When execution returns, BA should be $250+.",win:"No strong trade — defense pop possible but not conviction"},
+{t:"IWM",n:"iShares Russell 2000 ETF",s:"Small Cap Index",sig:"HOLD",conf:54,risk:"MEDIUM",bO:-.002,sO:.015,stO:-.015,why:"Small caps are more rate-sensitive and consumer-dependent. Iran uncertainty weighs more on small caps. Wait for clear macro direction.",cat:"Rate sensitivity to Iran/Fed reaction creates uncertainty",tech:"RSI 48; sideways; below 50-day MA",news:"Small cap earnings weaker than large cap; rate sensitivity elevated",geo:"Iran uncertainty most negative for rate-sensitive small caps.",out:"Small caps benefit more from rate cuts. Wait for Fed clarity. Target $220.",win:"No strong trade — wait for rate clarity"},
+{t:"TLT",n:"iShares 20+ Year Treasury ETF",s:"Long-Term Treasury Bonds",sig:"HOLD",conf:52,risk:"MEDIUM",bO:-.003,sO:.012,stO:-.015,why:"Iran war creates conflicting signals for bonds — flight to safety pushes prices up but oil inflation fears push yields up. Conflicting forces = HOLD.",cat:"Conflicting: flight to safety positive vs Iran oil inflation negative",tech:"RSI 48; sideways; uncertain direction",news:"10-year yield volatile: safe haven buying vs inflation fears from oil",geo:"Iran creates conflicting bond signals — wait for clarity.",out:"Bond direction depends on Fed response to Iran/oil. Wait for clarity.",win:"No strong trade — conflicting macro signals"},
+{t:"SBUX",n:"Starbucks Corp.",s:"Food & Beverage/Retail",sig:"HOLD",conf:52,risk:"MEDIUM",bO:-.006,sO:.018,stO:-.022,why:"Starbucks turnaround under Brian Niccol showing early promise but execution will take time. China recovery uncertain. Not a strong conviction trade today.",cat:"Niccol turnaround showing early signs; mobile order improvements",tech:"RSI 47; near 50-day MA; uncertain direction",news:"Starbucks US same-store sales improving under Niccol; China still weak",geo:"Iran minimal. Consumer confidence affects premium spending.",out:"Niccol has the Chipotle playbook. If he executes, SBUX should re-rate to $120. Takes 2-3 years.",win:"No strong trade — wait for trend confirmation"},
+{t:"PEP",n:"PepsiCo Inc.",s:"Food & Beverage/Snacks",sig:"HOLD",conf:58,risk:"LOW",bO:-.004,sO:.012,stO:-.015,why:"PepsiCo struggling with volume declines as consumers reduce snack spending on GLP-1 drugs and health trends. Dividend is safe but not an exciting trade.",cat:"3.5% dividend; snack volume headwinds from GLP-1 health trend",tech:"RSI 50; sideways; below 52-week high",news:"Pepsi snack volumes down 3% as GLP-1 users reduce snack consumption",geo:"Inflation fears moderate positive for branded beverages. GLP-1 is structural headwind.",out:"GLP-1 headwind is real but manageable. 3.5% dividend secure. Target $165.",win:"Defensive hold only — no exciting trade today"},
+{t:"DIS",n:"Walt Disney Co.",s:"Entertainment/Streaming",sig:"HOLD",conf:55,risk:"MEDIUM",bO:-.005,sO:.018,stO:-.022,why:"Disney streaming is finally profitable but parks and linear TV are drag. ESPN direct-to-consumer launch is the key catalyst. Needs cleaner execution before strong conviction.",cat:"Streaming profitability achieved; ESPN DTC launch is key catalyst",tech:"Below 50-day MA; RSI 46; weak trend",news:"Disney+ streaming profitable for 2nd consecutive quarter; ESPN DTC pricing set",geo:"Iran minimal. Consumer confidence affects parks attendance.",out:"Streaming profitability + ESPN DTC + parks recovery = multiple re-rating catalyst. Target $115.",win:"No strong trade — wait for ESPN DTC catalyst"},
+{t:"GM",n:"General Motors",s:"Automotive/EVs",sig:"HOLD",conf:52,risk:"HIGH",bO:-.005,sO:.018,stO:-.025,why:"GM Cruise robotaxi restart is positive but execution risk is high. Ultium EV platform improving. High oil benefits profitable ICE Silverado business.",cat:"Cruise robotaxi restart; Silverado truck demand up on high oil",tech:"RSI 48; near 50-day MA; sideways",news:"GM Cruise robotaxi service restarting in Houston; Silverado demand record",geo:"High oil mixed for GM — positive for truck profits, negative for EV transition.",out:"Cruise optionality + Silverado profits. Target $45 on Cruise progress.",win:"No strong trade — mixed signal"},
+];
+
+// ═══════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════
+const S = {
+  prices: {},
+  hist: {},
+  live: 0,
+  loading: false,
+  lastUp: null,
+  apiOk: null, // null=unknown, true=working, false=failed
+  sel: null,
+  filter: 'ALL',
+  search: '',
+  tab: 'picks',
+  detail: false
+};
+
+STOCKS.forEach(s => {
+  S.prices[s.t] = {price:null,change:0,chgPct:0,open:null,high:null,low:null,prev:null,live:false};
+  S.hist[s.t] = [];
+});
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+const f2 = n => (n!=null&&!isNaN(n)) ? Number(n).toFixed(2) : '—';
+const SC = {'STRONG BUY':'#00c987','BUY':'#34d399','HOLD':'#f0a500','SHORT':'#fb7185','STRONG SHORT':'#ef4444'};
+const RC = {'LOW':'#34d399','MEDIUM':'#f0a500','HIGH':'#ef4444'};
+const sigC = s => SC[s]||'#94a3b8';
+const riskC = r => RC[r]||'#94a3b8';
+const confC = c => c>=75?'#00c987':c>=65?'#f0a500':'#ef4444';
+
+function calcP(stk){
+  const p = S.prices[stk.t]?.price;
+  if(!p) return null;
+  const buy=+(p*(1+stk.bO)).toFixed(2);
+  const sell=+(p*(1+stk.sO)).toFixed(2);
+  const stop=+(p*(1+stk.stO)).toFixed(2);
+  return {
+    buy, sell, stop,
+    gain:+(sell-buy).toFixed(2),
+    gainPct:((stk.sO-stk.bO)*100).toFixed(1),
+    lossPct:(Math.abs(stk.stO-stk.bO)*100).toFixed(1)
+  };
+}
+
+// ═══════════════════════════════════════════════════
+// FETCH — FINNHUB
+// ═══════════════════════════════════════════════════
+async function fetchOne(ticker){
+  const url = `${FURL}?symbol=${ticker}&token=${FKEY}`;
+  const ctrl = new AbortController();
+  const tid = setTimeout(()=>ctrl.abort(), 10000);
+  try{
+    const r = await fetch(url, {signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d = await r.json();
+    if(!d||typeof d.c !== 'number'||d.c===0) return null;
+    return d;
+  }catch(e){ clearTimeout(tid); return null; }
+}
+
+async function fetchAll(){
+  if(S.loading) return;
+  S.loading = true;
+  renderStatus();
+
+  let liveCount = 0;
+  // Fetch in batches of 5
+  for(let i=0;i<STOCKS.length;i+=5){
+    const batch = STOCKS.slice(i,i+5);
+    const results = await Promise.all(batch.map(async stk=>{
+      const d = await fetchOne(stk.t);
+      return {t:stk.t, d};
+    }));
+    results.forEach(({t,d})=>{
+      if(d&&d.c&&d.c>0){
+        const chg = +(d.c-(d.pc||d.c)).toFixed(2);
+        const chgPct = d.pc ? +((chg/d.pc)*100).toFixed(2) : 0;
+        S.prices[t] = {price:d.c,change:chg,chgPct,open:d.o,high:d.h,low:d.l,prev:d.pc,live:true};
+        S.hist[t] = [...(S.hist[t]||[]),d.c].slice(-60);
+        liveCount++;
+        S.apiOk = true;
+      }
+    });
+    // Update count visually after each batch
+    S.live = liveCount;
+    renderStatus();
+    if(i+5<STOCKS.length) await new Promise(r=>setTimeout(r,250));
+  }
+
+  S.live = liveCount;
+  S.loading = false;
+  S.lastUp = new Date();
+  if(liveCount===0) S.apiOk = false;
+  render();
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER STATUS PILL
+// ═══════════════════════════════════════════════════
+function renderStatus(){
+  const el = document.getElementById('statpill');
+  if(!el) return;
+  if(S.loading){
+    el.innerHTML = `<div class="spinner"></div><span class="status-text" style="color:#64748b">Fetching ${S.live}/${STOCKS.length}…</span>`;
+  } else if(S.apiOk===false){
+    el.innerHTML = `<div class="dot dot-red"></div><span class="status-text" style="color:#ef4444">API Error — Tap Refresh</span>`;
+  } else if(S.live>0){
+    const t = S.lastUp ? S.lastUp.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
+    el.innerHTML = `<div class="dot dot-green"></div><span class="status-text" style="color:#00c987">Live ${S.live}/${STOCKS.length} · ${t}</span>`;
+  } else {
+    el.innerHTML = `<div class="dot dot-yellow"></div><span class="status-text" style="color:#f0a500">Connecting…</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SVG HELPERS
+// ═══════════════════════════════════════════════════
+function spark(pts,color,W=110,H=32){
+  const d = pts&&pts.length>1?pts:[0,1];
+  const mn=Math.min(...d),mx=Math.max(...d),r=mx-mn||0.01,p=2;
+  const xs=d.map((_,i)=>p+i*(W-p*2)/(d.length-1));
+  const ys=d.map(v=>H-p-((v-mn)/r)*(H-p*2));
+  const line='M'+xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join('L');
+  const area=`M${xs[0].toFixed(1)},${H}L`+xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join('L')+`L${xs[xs.length-1].toFixed(1)},${H}Z`;
+  const id='s'+color.replace('#','');
+  return `<svg width="${W}" height="${H}" style="display:block;width:100%"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.28"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${line}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+function bigChart(pts,color){
+  const d=pts&&pts.length>1?pts:[98,99,100,101,102];
+  const mn=Math.min(...d),mx=Math.max(...d),r=mx-mn||0.01;
+  const W=400,H=70;
+  const xs=d.map((_,i)=>i*(W/(d.length-1)));
+  const ys=d.map(v=>H-((v-mn)/r)*H);
+  const line='M'+xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join('L');
+  const area=`M0,${H}L`+xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join('L')+`L${W},${H}Z`;
+  return `<svg style="width:100%;height:70px" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.35"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#cg)"/><path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+}
+
+function cbar(v){
+  const c=confC(v);
+  return `<div class="cbar-wrap"><div class="cbar-bg"><div class="cbar-fill" style="width:${v}%;background:${c}"></div></div><span class="cbar-lbl" style="color:${c}">${v}%</span></div>`;
+}
+
+function badge(lbl,color){
+  return `<span class="badge" style="background:${color}1a;color:${color};border-color:${color}44">${lbl}</span>`;
+}
+
+// ═══════════════════════════════════════════════════
+// CARD HTML
+// ═══════════════════════════════════════════════════
+function cardHTML(stk){
+  const q=S.prices[stk.t];
+  const h=S.hist[stk.t]||[];
+  const color=sigC(stk.sig);
+  const price=q?.price;
+  const chg=q?.change||0;
+  const pct=q?.chgPct||0;
+  const isUp=chg>=0;
+  const cp=calcP(stk);
+  const active = S.sel===stk.t;
+  const priceStr = price
+    ? `<span class="card-price">${q.live?'<span style="color:#00c987;font-size:9px">●</span> ':''}\$${f2(price)}</span><span class="chg ${isUp?'up':'dn'}">${isUp?'+':''}${f2(chg)}(${isUp?'+':''}${f2(pct)}%)</span>`
+    : `<span class="card-price" style="color:#334155">Loading…</span>`;
+  return `<div class="card${active?' sel':''}" onclick="pickStock('${stk.t}')">
+    <div class="card-top">
+      <div><div class="card-ticker">${stk.t}</div><div class="card-sector">${stk.n}</div></div>
+      <div class="card-right">${badge(stk.sig,color)}<div class="price-line">${priceStr}</div></div>
+    </div>
+    ${spark(h,color)}
+    <div class="card-targets">
+      <span>Buy <b style="color:#22d3ee">${cp?'$'+f2(cp.buy):'—'}</b></span>
+      <b style="color:${color};font-size:13px">${cp?'+$'+f2(cp.gain):'—'}</b>
+      <span>Target <b style="color:#a78bfa">${cp?'$'+f2(cp.sell):'—'}</b></span>
+    </div>
+    ${cbar(stk.conf)}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// DETAIL HTML
+// ═══════════════════════════════════════════════════
+function detailHTML(stk){
+  const q=S.prices[stk.t];
+  const h=S.hist[stk.t]||[];
+  const color=sigC(stk.sig);
+  const price=q?.price;
+  const chg=q?.change||0;
+  const pct=q?.chgPct||0;
+  const isUp=chg>=0;
+  const cp=calcP(stk);
+  const liveTag=q?.live
+    ?`<span style="font-size:10px;background:#00c98720;color:#00c987;border:1px solid #00c98744;border-radius:5px;padding:2px 7px;font-weight:700">● LIVE</span>`
+    :`<span style="font-size:10px;background:#1e293b;color:#475569;border:1px solid #334155;border-radius:5px;padding:2px 7px;font-weight:600">CACHED</span>`;
+
+  return `<button class="back-btn" onclick="goBack()">← All Stocks</button>
+  <div class="dhead">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px">
+      <div><div class="dticker">${stk.t}</div><div class="dcompany">${stk.n}</div><div class="dsector">${stk.s}</div></div>
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">${badge(stk.sig,color)}${badge(stk.risk+' RISK',riskC(stk.risk))}</div>
+    </div>
+    <div class="dprice-row">
+      <div class="dprice">${price?'$'+f2(price):'Loading…'}</div>
+      ${price?`<div class="dchg ${isUp?'up':'dn'}">${isUp?'+':''}${f2(chg)} (${isUp?'+':''}${f2(pct)}%)</div>`:''}
+      ${liveTag}
+    </div>
+    <div class="dmeta">
+      <span>Open:<b style="color:#94a3b8;margin-left:4px">$${f2(q?.open)}</b></span>
+      <span>High:<b style="color:#34d399;margin-left:4px">$${f2(q?.high)}</b></span>
+      <span>Low:<b style="color:#ef4444;margin-left:4px">$${f2(q?.low)}</b></span>
+      <span>Prev:<b style="color:#94a3b8;margin-left:4px">$${f2(q?.prev)}</b></span>
+    </div>
+    <div class="pboxes">
+      <div class="pbox"><div class="pbox-lbl">🟢 Buy At</div><div class="pbox-val" style="color:#22d3ee">${cp?'$'+f2(cp.buy):'—'}</div><div class="pbox-sub">Entry price</div></div>
+      <div class="pbox"><div class="pbox-lbl">🎯 Sell At</div><div class="pbox-val" style="color:#a78bfa">${cp?'$'+f2(cp.sell):'—'}</div><div class="pbox-sub">${cp?'+'+cp.gainPct+'% gain':''}</div></div>
+      <div class="pbox"><div class="pbox-lbl">🛑 Stop Loss</div><div class="pbox-val" style="color:#ef4444">${cp?'$'+f2(cp.stop):'—'}</div><div class="pbox-sub">${cp?'-'+cp.lossPct+'% max':''}</div></div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-hdr"><span>Intraday Price — ${stk.t}</span><span style="display:flex;align-items:center;gap:5px"><span class="dot dot-green"></span><span style="color:#00c987;font-size:10px;font-weight:600">LIVE</span></span></div>
+    ${bigChart(h,color)}
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#334155;margin-top:4px;margin-bottom:12px"><span>Open</span><span>Now →</span></div>
+    <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">AI Confidence</div>
+    ${cbar(stk.conf)}
+  </div>
+  <div class="why-card"><div class="why-title">💡 Why This Trade</div><div class="why-text">${stk.why}</div></div>
+  <div class="plan-card">
+    <div class="plan-title">📋 Step-by-Step Trade Plan</div>
+    <div class="steps">
+      <div class="step"><div class="snum">1</div><div><div class="stitle" style="color:#22d3ee">Best Entry Window</div><div class="sbody">${stk.win}</div></div></div>
+      <div class="step"><div class="snum">2</div><div><div class="stitle" style="color:#00c987">Place Order</div><div class="sbody">${stk.sig.includes('SHORT')?'SHORT':'BUY'} ${stk.t} at ${cp?'$'+f2(cp.buy):'entry price'}</div></div></div>
+      <div class="step"><div class="snum">3</div><div><div class="stitle" style="color:#ef4444">Set Stop Loss Immediately</div><div class="sbody">Exit if price hits ${cp?'$'+f2(cp.stop):'stop level'} — max loss ${cp?'-'+cp.lossPct+'%':'~2%'}</div></div></div>
+      <div class="step"><div class="snum">4</div><div><div class="stitle" style="color:#a78bfa">Take Profit at Target</div><div class="sbody">Sell at ${cp?'$'+f2(cp.sell):'target'} → ${cp?'+$'+f2(cp.gain)+' per share (+'+cp.gainPct+'%)+':''}</div></div></div>
+    </div>
+  </div>
+  <div class="igrid">
+    <div class="icard"><div class="ilabel" style="color:#f0a500">⚡ Today's Catalyst</div><div class="ival">${stk.cat}</div></div>
+    <div class="icard"><div class="ilabel" style="color:#3b82f6">📊 Technical Setup</div><div class="ival">${stk.tech}</div></div>
+    <div class="icard"><div class="ilabel" style="color:#22d3ee">📰 Key News</div><div class="ival">${stk.news}</div></div>
+    <div class="icard"><div class="ilabel" style="color:#a78bfa">🌍 Geopolitical</div><div class="ival">${stk.geo}</div></div>
+  </div>
+  <div class="outlook-card"><div class="outlook-title">🔭 6–12 Month Outlook</div><div class="outlook-text">${stk.out}</div></div>
+  <div class="disc">⚠️ <b style="color:#475569">Educational only.</b> Not financial advice. Day trading carries substantial risk of loss. Always use your own judgment and consult a licensed financial advisor.</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// MAIN RENDER
+// ═══════════════════════════════════════════════════
+function getFiltered(){
+  let list = [...STOCKS];
+  if(S.search){
+    const q=S.search.toLowerCase();
+    list=list.filter(s=>s.t.toLowerCase().includes(q)||s.n.toLowerCase().includes(q)||s.s.toLowerCase().includes(q));
+  }
+  switch(S.filter){
+    case 'STRONG': return list.filter(s=>s.sig==='STRONG BUY'||s.sig==='STRONG SHORT');
+    case 'BUY':    return list.filter(s=>s.sig==='BUY'||s.sig==='STRONG BUY');
+    case 'SHORT':  return list.filter(s=>s.sig==='SHORT'||s.sig==='STRONG SHORT');
+    case 'HOLD':   return list.filter(s=>s.sig==='HOLD');
+    case 'TOP10':  return list.filter(s=>s.sig!=='HOLD'&&!s.sig.includes('SHORT')).sort((a,b)=>b.conf-a.conf).slice(0,10);
+    default: return list;
+  }
+}
+
+function render(){
+  const root = document.getElementById('root');
+  if(!root) return;
+
+  const topPicks = STOCKS.filter(s=>s.sig==='STRONG BUY').sort((a,b)=>b.conf-a.conf).slice(0,8);
+  const buys = STOCKS.filter(s=>s.sig==='BUY'||s.sig==='STRONG BUY').length;
+  const shorts = STOCKS.filter(s=>s.sig==='SHORT'||s.sig==='STRONG SHORT').length;
+  const avgConf = Math.round(STOCKS.reduce((a,s)=>a+s.conf,0)/STOCKS.length);
+
+  const selStk = S.sel ? STOCKS.find(s=>s.t===S.sel) : null;
+
+  const tickerItems = [
+    `🛢️ Oil <b>$94.93/bbl</b> +2.1%`,`📈 S&amp;P Futures <b>+0.72%</b>`,`💻 Nasdaq Futures <b>+1.1%</b>`,
+    `🥇 Gold <b>$3,247/oz</b> +1.4%`,`⚡ US Completes Iran Strikes`,`🔐 Iran Cyber Threat Elevated`,
+    `🤖 NVDA Blackwell GPU demand beats`,`🚗 Tesla 69 Robotaxis TX Approved`,`🏦 JPMorgan 25% ROE 5th Year`,
+    `☀️ Amazon $17.5B AI Infrastructure Loan`,`🛡️ RTX $3.2B Emergency Patriot Order`,`🛢️ Oil <b>$94.93/bbl</b> +2.1%`,
+    `📈 S&amp;P Futures <b>+0.72%</b>`,`💻 Nasdaq Futures <b>+1.1%</b>`,`🥇 Gold <b>$3,247/oz</b> +1.4%`,
+    `⚡ US Completes Iran Strikes`,`🔐 Iran Cyber Threat Elevated`,`🤖 NVDA Blackwell GPU demand beats`,
+    `🚗 Tesla 69 Robotaxis TX Approved`,`🏦 JPMorgan 25% ROE 5th Year`,`☀️ Amazon $17.5B AI Loan`,
+    `🛡️ RTX $3.2B Emergency Patriot Order`
+  ].map(t=>`<span class="ticker-item">${t}</span>`).join('');
+
+  const topPickBtns = topPicks.map(s=>{
+    const cp=calcP(s);
+    const sc=sigC(s.sig);
+    return `<button class="pick-btn" onclick="pickStock('${s.t}')" style="background:${sc}14;border-color:${sc}55">
+      <span class="pick-ticker" style="color:${sc}">${s.t}</span>
+      <span class="pick-range">${cp?'$'+f2(cp.buy)+'→$'+f2(cp.sell):'loading'}</span>
+      ${cp?`<span class="pick-gain" style="background:${sc}">+$${f2(cp.gain)}</span>`:''}
+    </button>`;
+  }).join('');
+
+  const filterBtns=[['ALL',`All(${STOCKS.length})`],['TOP10','⚡ Top 10'],['STRONG','Strong'],['BUY','Buy'],['SHORT','Short'],['HOLD','Hold']]
+    .map(([f,l])=>`<button class="fbtn${S.filter===f?' active':''}" onclick="setFilter('${f}')">${l}</button>`).join('');
+
+  let mainContent='';
+  if(S.detail && selStk){
+    mainContent = detailHTML(selStk);
+  } else if(S.tab==='picks'){
+    const filtered=getFiltered();
+    const statsRow=`<div class="stats-row">
+      <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${STOCKS.length}</div><div class="stat-label">Stocks</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:#00c987">${buys}</div><div class="stat-label">Buy</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:#ef4444">${shorts}</div><div class="stat-label">Short</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:#f0a500">${avgConf}%</div><div class="stat-label">Avg Conf</div></div>
+    </div>`;
+    const cards=filtered.map(s=>cardHTML(s)).join('');
+    mainContent=`${statsRow}
+      <div class="picks-banner"><div class="picks-title">⚡ Highest Conviction Picks — Click for Full Analysis</div><div class="picks-list">${topPickBtns}</div></div>
+      <input class="search-box" type="text" placeholder="🔍 Search ticker, company, sector…" value="${S.search}" oninput="doSearch(this.value)" autocomplete="off" autocorrect="off" autocapitalize="off">
+      <div class="filter-bar">${filterBtns}</div>
+      <div class="stock-grid">${cards||'<div class="empty">No stocks match your filter.</div>'}</div>`;
+  } else if(S.tab==='research'){
+    const resCards=STOCKS.map(s=>{
+      const cp=calcP(s);const q=S.prices[s.t];const c=sigC(s.sig);const isUp=(q?.change||0)>=0;
+      return `<div class="about-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="width:40px;height:40px;background:${c}18;border:2px solid ${c}44;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:${c};flex-shrink:0">${s.t.slice(0,4)}</div>
+            <div><div style="font-weight:800;color:#f1f5f9;font-size:14px">${s.n}</div>
+            <div style="font-size:11px;color:#475569;margin-top:2px">${s.s} · <b style="color:${isUp?'#00c987':'#ef4444'}">${q?.price?'$'+f2(q.price):'—'}</b>${q?.price?`<span style="color:${isUp?'#00c987':'#ef4444'};margin-left:4px">(${isUp?'+':''}${f2(q?.chgPct)}%)</span>`:''}</div></div>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">${badge(s.sig,c)}${badge(s.risk,riskC(s.risk))}</div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">
+          ${[{l:'Buy At',v:cp?'$'+f2(cp.buy):'—',c:'#22d3ee'},{l:'Target',v:cp?'$'+f2(cp.sell):'—',c:'#a78bfa'},{l:'Stop',v:cp?'$'+f2(cp.stop):'—',c:'#ef4444'},{l:'Gain',v:cp?'+$'+f2(cp.gain):'—',c:'#00c987'}]
+            .map(p=>`<div style="background:#070e1c;border-radius:7px;padding:7px 10px"><div style="font-size:9px;color:#475569;text-transform:uppercase;margin-bottom:2px">${p.l}</div><div style="font-size:13px;font-weight:800;color:${p.c}">${p.v}</div></div>`).join('')}
+        </div>
+        <div class="why-card" style="margin-bottom:9px"><div class="why-title">💡 Why This Trade</div><div class="why-text" style="font-size:12px">${s.why}</div></div>
+        <div class="igrid">
+          <div class="icard"><div class="ilabel" style="color:#f0a500">⚡ Catalyst</div><div class="ival">${s.cat}</div></div>
+          <div class="icard"><div class="ilabel" style="color:#22d3ee">📰 News</div><div class="ival">${s.news}</div></div>
+          <div class="icard"><div class="ilabel" style="color:#a78bfa">🌍 Geopolitical</div><div class="ival">${s.geo}</div></div>
+          <div class="icard"><div class="ilabel" style="color:#3b82f6">📊 Technicals</div><div class="ival">${s.tech}</div></div>
+        </div>
+        <div class="outlook-card"><div class="outlook-title">🔭 6–12 Month Outlook</div><div class="outlook-text" style="font-size:12px">${s.out}</div></div>
+      </div>`;
+    }).join('');
+    mainContent=`<div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:11px">Full Research — All ${STOCKS.length} Stocks</div>${resCards}`;
+  } else {
+    mainContent=`<div class="about-card">
+      <div style="font-size:22px;font-weight:900;color:#f1f5f9;margin-bottom:6px">📈 Day Trader AI</div>
+      <div style="color:#64748b;margin-bottom:14px">Your personal AI-powered day trading research app · ${STOCKS.length} stocks</div>
+      <div class="why-card">
+        <div class="why-title">How to Use</div>
+        <div class="why-text">
+          1. <b>Prices refresh automatically</b> every 30 seconds from Finnhub<br><br>
+          2. <b>Green ● LIVE</b> = real-time price confirmed from Finnhub<br><br>
+          3. <b>Buy At</b> = enter your position at this price<br><br>
+          4. <b>Sell At</b> = take profit target<br><br>
+          5. <b>Stop Loss</b> = exit immediately if price hits this level — protect yourself<br><br>
+          6. <b>Confidence %</b> = AI conviction score. Higher = stronger signal<br><br>
+          7. <b>⚡ Top 10</b> filter = highest conviction trades of the day
+        </div>
+      </div>
+      <div class="about-card" style="background:#1a0a0a;border-color:#7f1d1d;margin-top:0">
+        <div style="font-size:10px;color:#ef4444;font-weight:700;text-transform:uppercase;margin-bottom:8px">⚠️ Risk Warning</div>
+        <div style="font-size:12px;color:#fca5a5;line-height:1.7">This app is for <b>educational purposes only</b>. Not financial advice. Day trading involves substantial risk — you can lose all invested capital. Always:<br>• Use a stop loss on every trade<br>• Never risk more than 1-2% of capital per trade<br>• Do your own research<br>• Consult a licensed financial advisor</div>
+      </div>
+      <div class="icard" style="margin-top:9px">
+        <div class="ilabel" style="color:#00c987">📱 Add to iPhone Home Screen</div>
+        <div class="ival">Open in <b>Safari</b> → Tap Share button (□↑) → "Add to Home Screen" → "Add". Appears as an app icon!</div>
+      </div>
+      <div class="icard" style="margin-top:8px">
+        <div class="ilabel" style="color:#3b82f6">📤 Share This App</div>
+        <div class="ival">Send the .html file via iMessage, WhatsApp, AirDrop, or Email. Open in Safari and add to home screen — no App Store needed!</div>
+      </div>
+    </div>`;
+  }
+
+  const tabBtns=[['picks','📊 Picks'],['research','🔬 Research'],['about','ℹ️ About']]
+    .map(([t,l])=>`<button class="tab${S.tab===t?' active':''}" onclick="setTab('${t}')">${l}</button>`).join('');
+
+  root.innerHTML=`
+    <div class="topbar">
+      <div class="logo">
+        <div class="logo-icon">📈</div>
+        <div><div class="logo-text">Day Trader AI</div><div class="logo-sub">${STOCKS.length} Stocks · Live</div></div>
+      </div>
+      <div id="statpill" class="status-pill"><div class="dot dot-yellow"></div><span class="status-text" style="color:#f0a500">Connecting…</span></div>
+      <button class="refresh-btn" onclick="manualRefresh()">↺</button>
+    </div>
+    <div class="ticker-wrap"><span class="live-badge">LIVE</span><div class="ticker-track">${tickerItems}</div></div>
+    <div class="tabs">${tabBtns}</div>
+    <div class="content">${mainContent}</div>
+  `;
+  renderStatus();
+}
+
+// ═══════════════════════════════════════════════════
+// EVENT HANDLERS (global)
+// ═══════════════════════════════════════════════════
+function pickStock(t){ S.sel=t; S.detail=true; render(); window.scrollTo(0,0); }
+function goBack(){ S.detail=false; render(); }
+function setFilter(f){ S.filter=f; render(); }
+function setTab(t){ S.tab=t; S.detail=false; render(); }
+function doSearch(v){ S.search=v; render(); }
+function manualRefresh(){ fetchAll(); }
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+render();
+fetchAll();
+setInterval(()=>{ if(!S.loading) fetchAll(); }, 30000);
+</script>
+</body>
+</html>
