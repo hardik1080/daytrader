@@ -290,11 +290,18 @@ function calcP(stk){
 // ═══════════════════════════════════════════════════
 // FETCH — FINNHUB PRIMARY + YAHOO FALLBACK
 // ═══════════════════════════════════════════════════
-async function tryFetch(url, timeout=9000){
+// ── PROXY URL: points to YOUR Netlify function (no CORS issues on any device) ──
+// After deploying to Netlify, this auto-resolves to the right URL.
+// On Netlify: /.netlify/functions/quote?symbol=NVDA
+// On GitHub Pages (fallback): direct Finnhub
+const IS_NETLIFY = window.location.hostname.includes('netlify.app') || window.location.hostname.includes('netlify.com');
+const PROXY_BASE = IS_NETLIFY ? '/.netlify/functions/quote' : null;
+
+async function doFetch(url, timeout=8000){
   const ctrl = new AbortController();
   const tid = setTimeout(()=>ctrl.abort(), timeout);
   try{
-    const r = await fetch(url, {signal:ctrl.signal, mode:'cors', cache:'no-store'});
+    const r = await fetch(url, {signal:ctrl.signal, cache:'no-store'});
     clearTimeout(tid);
     if(!r.ok) return null;
     return await r.json();
@@ -307,45 +314,23 @@ function parseFH(d){
   return {c:d.c, d:+(d.c-prev).toFixed(2), dp:+((d.c-prev)/prev*100).toFixed(2), o:d.o||d.c, h:d.h||d.c, l:d.l||d.c, pc:prev};
 }
 
-function parseYH(data){
-  try{
-    const meta = data?.chart?.result?.[0]?.meta;
-    if(!meta||!meta.regularMarketPrice) return null;
-    const p = meta.regularMarketPrice;
-    const prev = meta.previousClose||meta.chartPreviousClose||p;
-    const chg = +(p-prev).toFixed(2);
-    return {c:p, d:chg, dp:+((chg/prev)*100).toFixed(2), o:meta.regularMarketOpen||p, h:meta.regularMarketDayHigh||p, l:meta.regularMarketDayLow||p, pc:prev};
-  }catch(e){return null;}
-}
-
 async function fetchOne(ticker){
-  const fhUrl   = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`;
-  const yhUrl   = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
-  const yhUrl2  = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+  // 1. Netlify proxy (works on ALL devices — iPhone, Android, desktop)
+  if(PROXY_BASE){
+    const d = await doFetch(`${PROXY_BASE}?symbol=${ticker}`);
+    const r = parseFH(d);
+    if(r) return r;
+  }
 
-  // 1. Finnhub direct (works on desktop Chrome + GitHub Pages on desktop)
-  const d1 = await tryFetch(fhUrl);
-  const r1 = parseFH(d1);
-  if(r1) return r1;
-
-  // 2. Finnhub via corsproxy.io — correct URL format: ?url= (works on github.io including iPhone)
-  const d2 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(fhUrl)}`);
+  // 2. Finnhub direct (works on desktop Chrome/Firefox from GitHub Pages)
+  const d2 = await doFetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`);
   const r2 = parseFH(d2);
   if(r2) return r2;
 
-  // 3. Yahoo via corsproxy.io
-  const d3 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(yhUrl)}`);
-  const r3 = parseYH(d3);
-  if(r3) return r3;
-
-  // 4. Yahoo query2 via corsproxy.io
-  const d4 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(yhUrl2)}`);
-  const r4 = parseYH(d4);
-  if(r4) return r4;
-
-  // 5. Finnhub via allorigins
-  const d5 = await tryFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(fhUrl)}`);
-  return parseFH(d5);
+  // 3. Finnhub via corsproxy (last resort)
+  const fhEnc = encodeURIComponent(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`);
+  const d3 = await doFetch(`https://corsproxy.io/?url=${fhEnc}`);
+  return parseFH(d3);
 }
 
 async function fetchAll(){
@@ -355,7 +340,8 @@ async function fetchAll(){
   S.apiOk = null;
   renderStatus();
 
-  const batchSize = 5;
+  // Fetch in parallel batches of 8
+  const batchSize = 8;
   for(let i=0; i<STOCKS.length; i+=batchSize){
     const batch = STOCKS.slice(i, i+batchSize);
     await Promise.all(batch.map(async stk=>{
@@ -368,7 +354,7 @@ async function fetchAll(){
       }
     }));
     renderStatus();
-    if(i+batchSize < STOCKS.length) await new Promise(r=>setTimeout(r,300));
+    if(i+batchSize < STOCKS.length) await new Promise(r=>setTimeout(r,150));
   }
 
   S.loading = false;
