@@ -288,61 +288,92 @@ function calcP(stk){
 }
 
 // ═══════════════════════════════════════════════════
-// FETCH — FINNHUB
+// FETCH — FINNHUB PRIMARY + YAHOO FALLBACK
 // ═══════════════════════════════════════════════════
-async function fetchOne(ticker){
-  const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`;
+async function tryFetch(url, timeout=9000){
   const ctrl = new AbortController();
-  const tid = setTimeout(()=>ctrl.abort(), 12000);
+  const tid = setTimeout(()=>ctrl.abort(), timeout);
   try{
-    const r = await fetch(url, {
-      signal: ctrl.signal,
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-store',
-      headers: { 'X-Finnhub-Token': FKEY }
-    });
+    const r = await fetch(url, {signal:ctrl.signal, mode:'cors', cache:'no-store'});
     clearTimeout(tid);
     if(!r.ok) return null;
-    const d = await r.json();
-    if(!d || typeof d.c !== 'number' || d.c === 0) return null;
-    return d;
-  } catch(e) { clearTimeout(tid); return null; }
+    return await r.json();
+  }catch(e){ clearTimeout(tid); return null; }
+}
+
+function parseFH(d){
+  if(!d||typeof d.c!=='number'||d.c===0) return null;
+  const prev = d.pc||d.c;
+  return {c:d.c, d:+(d.c-prev).toFixed(2), dp:+((d.c-prev)/prev*100).toFixed(2), o:d.o||d.c, h:d.h||d.c, l:d.l||d.c, pc:prev};
+}
+
+function parseYH(data){
+  try{
+    const meta = data?.chart?.result?.[0]?.meta;
+    if(!meta||!meta.regularMarketPrice) return null;
+    const p = meta.regularMarketPrice;
+    const prev = meta.previousClose||meta.chartPreviousClose||p;
+    const chg = +(p-prev).toFixed(2);
+    return {c:p, d:chg, dp:+((chg/prev)*100).toFixed(2), o:meta.regularMarketOpen||p, h:meta.regularMarketDayHigh||p, l:meta.regularMarketDayLow||p, pc:prev};
+  }catch(e){return null;}
+}
+
+async function fetchOne(ticker){
+  const fhUrl   = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FKEY}`;
+  const yhUrl   = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+  const yhUrl2  = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+
+  // 1. Finnhub direct (works on desktop Chrome + GitHub Pages on desktop)
+  const d1 = await tryFetch(fhUrl);
+  const r1 = parseFH(d1);
+  if(r1) return r1;
+
+  // 2. Finnhub via corsproxy.io — correct URL format: ?url= (works on github.io including iPhone)
+  const d2 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(fhUrl)}`);
+  const r2 = parseFH(d2);
+  if(r2) return r2;
+
+  // 3. Yahoo via corsproxy.io
+  const d3 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(yhUrl)}`);
+  const r3 = parseYH(d3);
+  if(r3) return r3;
+
+  // 4. Yahoo query2 via corsproxy.io
+  const d4 = await tryFetch(`https://corsproxy.io/?url=${encodeURIComponent(yhUrl2)}`);
+  const r4 = parseYH(d4);
+  if(r4) return r4;
+
+  // 5. Finnhub via allorigins
+  const d5 = await tryFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(fhUrl)}`);
+  return parseFH(d5);
 }
 
 async function fetchAll(){
   if(S.loading) return;
   S.loading = true;
+  S.live = 0;
+  S.apiOk = null;
   renderStatus();
 
-  let liveCount = 0;
-  // Fetch in batches of 5
-  for(let i=0;i<STOCKS.length;i+=5){
-    const batch = STOCKS.slice(i,i+5);
-    const results = await Promise.all(batch.map(async stk=>{
+  const batchSize = 5;
+  for(let i=0; i<STOCKS.length; i+=batchSize){
+    const batch = STOCKS.slice(i, i+batchSize);
+    await Promise.all(batch.map(async stk=>{
       const d = await fetchOne(stk.t);
-      return {t:stk.t, d};
-    }));
-    results.forEach(({t,d})=>{
-      if(d&&d.c&&d.c>0){
-        const chg = +(d.c-(d.pc||d.c)).toFixed(2);
-        const chgPct = d.pc ? +((chg/d.pc)*100).toFixed(2) : 0;
-        S.prices[t] = {price:d.c,change:chg,chgPct,open:d.o,high:d.h,low:d.l,prev:d.pc,live:true};
-        S.hist[t] = [...(S.hist[t]||[]),d.c].slice(-60);
-        liveCount++;
+      if(d&&d.c>0){
+        S.prices[stk.t] = {price:d.c, change:d.d, chgPct:d.dp, open:d.o, high:d.h, low:d.l, prev:d.pc, live:true};
+        S.hist[stk.t] = [...(S.hist[stk.t]||[]), d.c].slice(-60);
+        S.live++;
         S.apiOk = true;
       }
-    });
-    // Update count visually after each batch
-    S.live = liveCount;
+    }));
     renderStatus();
-    if(i+5<STOCKS.length) await new Promise(r=>setTimeout(r,400));
+    if(i+batchSize < STOCKS.length) await new Promise(r=>setTimeout(r,300));
   }
 
-  S.live = liveCount;
   S.loading = false;
   S.lastUp = new Date();
-  if(liveCount===0) S.apiOk = false;
+  if(S.live===0) S.apiOk = false;
   render();
 }
 
